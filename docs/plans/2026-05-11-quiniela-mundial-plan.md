@@ -6,7 +6,12 @@
 
 **Architecture:** Next.js (App Router) en Vercel + Supabase (Postgres + Auth + Realtime). API football-data.org via Vercel Cron. Dos entornos (dev/prod). Diseño mobile-first.
 
-**Tech Stack:** Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui, Supabase JS SDK, Vercel, football-data.org, flagcdn.com.
+**Tech Stack (actual al 2026-05-11):** Next.js 16.2.6 (App Router, Turbopack), React 19.2.4, TypeScript 5, Tailwind CSS v4 (config CSS-first, sin `tailwind.config.ts`), shadcn/ui (style `base-nova` con `@base-ui/react` como primitives, NO Radix UI), Supabase JS SDK (`@supabase/supabase-js` + `@supabase/ssr`), Vercel (Hobby), football-data.org, flagcdn.com.
+
+**Nota sobre divergencia del stack:** Este plan se escribió asumiendo Next 14 / React 18 / Tailwind v3 / shadcn-Radix. `create-next-app@latest` y `shadcn@latest` ahora instalan versiones más nuevas. Las divergencias clave:
+- Tailwind v4 → no hay `tailwind.config.ts`; el theme vive en `app/globals.css` con `@theme inline`.
+- shadcn moderno → usa `@base-ui/react` (de MUI) en lugar de Radix. Algunas APIs difieren (ej: `render` prop en lugar de `asChild`, `data-open`/`data-closed` en lugar de `data-state="open"`). Componentes disponibles: button, card, input, label, table, dialog, dropdown-menu, sonner (NO `toast`), tabs, select. Otros (Accordion, Avatar, Slider, etc.) pueden no estar disponibles en Base UI — verificar si una tarea futura los pide.
+- `toast` → reemplazado por `sonner` (requiere `<ThemeProvider>` de `next-themes` envolviendo `app/layout.tsx` cuando se monte `<Toaster />`).
 
 **Documento de diseño asociado:** [2026-05-11-quiniela-mundial-design.md](./2026-05-11-quiniela-mundial-design.md)
 
