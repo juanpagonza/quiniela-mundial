@@ -8,37 +8,51 @@ import { Button } from '@/components/ui/button'
 function LoginContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+  const queryError = searchParams.get('error')
+  const rawNext = searchParams.get('next') ?? '/'
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/'
+
   const [loading, setLoading] = useState(false)
+  const [clientError, setClientError] = useState<string | null>(null)
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
+    setClientError(null)
+    const callbackUrl = new URL('/auth/callback', window.location.origin)
+    if (next !== '/') callbackUrl.searchParams.set('next', next)
+
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: callbackUrl.toString() },
     })
     if (signInError) {
-      console.error('OAuth error:', signInError)
+      setClientError('No pudimos contactar a Google. Intentá de nuevo en un momento.')
       setLoading(false)
     }
   }
 
+  const displayError = clientError ?? (queryError ? 'No pudimos iniciar tu sesión. Intentá de nuevo.' : null)
+
   return (
     <div className="w-full max-w-md bg-card text-card-foreground rounded-2xl shadow-sm border p-8">
-      <h1 className="text-3xl font-semibold tracking-tight mb-2">⚽ Quiniela Mundial</h1>
+      <h1 className="text-3xl font-semibold tracking-tight mb-2">
+        <span aria-hidden="true">⚽ </span>Quiniela Mundial
+      </h1>
       <p className="text-muted-foreground mb-6">Iniciá sesión para participar</p>
 
-      {error && (
-        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          No pudimos iniciar tu sesión. Intentá de nuevo.
+      {displayError && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          {displayError}
         </div>
       )}
 
       <Button
         onClick={handleGoogleSignIn}
         disabled={loading}
+        aria-busy={loading}
         className="w-full"
         size="lg"
       >
