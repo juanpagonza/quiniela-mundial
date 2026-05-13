@@ -10,6 +10,9 @@ export default defineConfig({
     // Patterns to find tests. Tests live in __tests__ folders next to the code,
     // or alongside source as *.test.ts.
     include: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
+    // Force UTC so date-fns formatting in lib/dates is deterministic regardless
+    // of the developer's local timezone.
+    env: { TZ: 'UTC' },
   },
   resolve: {
     alias: {
