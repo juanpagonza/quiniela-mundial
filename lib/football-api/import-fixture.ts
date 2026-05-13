@@ -20,7 +20,8 @@ const STAGE_TO_FASE: Record<ApiStage, FasePartido> = {
 // Mapping: football-data.org status → our estado enum. TIMED is treated as
 // programado (same lifecycle, different precision). POSTPONED/SUSPENDED/CANCELLED
 // all collapse to 'suspendido' because we don't need to distinguish them in UI.
-const STATUS_TO_ESTADO: Record<ApiMatchStatus, EstadoPartido> = {
+// Exported so sync-results uses the same mapping — keeping a single source of truth.
+export const STATUS_TO_ESTADO: Record<ApiMatchStatus, EstadoPartido> = {
   SCHEDULED: 'programado',
   TIMED: 'programado',
   IN_PLAY: 'en_curso',
