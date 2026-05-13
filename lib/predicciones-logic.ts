@@ -19,6 +19,16 @@ export type UpsertResult =
   | { success: true }
   | { success: false; error: string }
 
+// Shape of the Server Action state, plus its initial value. Kept here (not in
+// the 'use server' action file) because a 'use server' file is only allowed to
+// export async functions — re-exporting a plain object from there would crash
+// at module evaluation with "A 'use server' file can only export async functions".
+export interface PrediccionActionState {
+  result: UpsertResult | null
+}
+
+export const INITIAL_PREDICCION_STATE: PrediccionActionState = { result: null }
+
 function validate(input: UpsertInput): string | null {
   const { marcadorLocal, marcadorVisitante } = input
   if (!Number.isInteger(marcadorLocal) || marcadorLocal < MARCADOR_MIN) {

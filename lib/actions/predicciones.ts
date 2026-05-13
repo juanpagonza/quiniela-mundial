@@ -4,14 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
   upsertPrediccionPartidoCore,
-  type UpsertResult,
+  type PrediccionActionState,
 } from '@/lib/predicciones-logic'
-
-export interface PrediccionActionState {
-  result: UpsertResult | null
-}
-
-export const INITIAL_PREDICCION_STATE: PrediccionActionState = { result: null }
 
 /**
  * Server Action consumed by FormularioPrediccion via useActionState.

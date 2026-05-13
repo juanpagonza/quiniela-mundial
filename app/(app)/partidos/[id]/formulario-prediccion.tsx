@@ -2,11 +2,12 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { upsertPrediccionPartido } from '@/lib/actions/predicciones'
 import {
-  upsertPrediccionPartido,
+  MARCADOR_MAX,
+  MARCADOR_MIN,
   INITIAL_PREDICCION_STATE,
-} from '@/lib/actions/predicciones'
-import { MARCADOR_MAX, MARCADOR_MIN } from '@/lib/predicciones-logic'
+} from '@/lib/predicciones-logic'
 import { estaBloqueado, tiempoHastaKickoff } from '@/lib/dates'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
