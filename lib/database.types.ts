@@ -487,11 +487,17 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_puntos_bonus: {
+        Args: { p_pregunta_id: string }
+        Returns: undefined
+      }
       calcular_puntos_partido: {
         Args: { p_partido_id: string }
         Returns: undefined
       }
+      calcular_puntos_torneo: { Args: never; Returns: undefined }
       mundial_iniciado: { Args: never; Returns: boolean }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       accion_auditoria:
