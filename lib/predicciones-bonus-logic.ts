@@ -24,39 +24,48 @@ export interface BonusActionState {
 
 export const INITIAL_BONUS_STATE: BonusActionState = { result: null }
 
-type Validated =
+export type RespuestaBonusValidada =
   | { ok: true; respuestaJson: number | string }
   | { ok: false; error: string }
 
-function validateRespuesta(input: UpsertBonusInput): Validated {
-  switch (input.tipo) {
+/**
+ * Shared validator for any caller submitting a bonus respuesta — both the
+ * participant's prediction and the admin's respuesta_correcta go through here.
+ * Returns the JSON-serializable value to store, or an error message.
+ */
+export function validateRespuestaBonus(
+  tipo: TipoPreguntaBonus,
+  respuesta: number | string,
+  opciones?: string[] | null,
+): RespuestaBonusValidada {
+  switch (tipo) {
     case 'numero': {
-      const n = input.respuesta
+      const n = respuesta
       if (typeof n !== 'number' || !Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
         return { ok: false, error: 'La respuesta debe ser un entero no negativo.' }
       }
       return { ok: true, respuestaJson: n }
     }
     case 'over_under': {
-      if (input.respuesta !== 'over' && input.respuesta !== 'under') {
+      if (respuesta !== 'over' && respuesta !== 'under') {
         return { ok: false, error: 'Respuesta inválida.' }
       }
-      return { ok: true, respuestaJson: input.respuesta }
+      return { ok: true, respuestaJson: respuesta }
     }
     case 'si_no': {
-      if (input.respuesta !== 'si' && input.respuesta !== 'no') {
+      if (respuesta !== 'si' && respuesta !== 'no') {
         return { ok: false, error: 'Respuesta inválida.' }
       }
-      return { ok: true, respuestaJson: input.respuesta }
+      return { ok: true, respuestaJson: respuesta }
     }
     case 'opcion_multiple': {
-      if (typeof input.respuesta !== 'string' || input.respuesta.length === 0) {
+      if (typeof respuesta !== 'string' || respuesta.length === 0) {
         return { ok: false, error: 'Elegí una opción.' }
       }
-      if (input.opciones && !input.opciones.includes(input.respuesta)) {
+      if (opciones && !opciones.includes(respuesta)) {
         return { ok: false, error: 'La respuesta no está entre las opciones permitidas.' }
       }
-      return { ok: true, respuestaJson: input.respuesta }
+      return { ok: true, respuestaJson: respuesta }
     }
     default:
       return { ok: false, error: 'Tipo de pregunta desconocido.' }
@@ -78,7 +87,7 @@ export async function upsertPrediccionBonusCore(
   userId: string,
   input: UpsertBonusInput,
 ): Promise<UpsertBonusResult> {
-  const v = validateRespuesta(input)
+  const v = validateRespuestaBonus(input.tipo, input.respuesta, input.opciones)
   if (!v.ok) return { success: false, error: v.error }
 
   const { error } = await supabase
