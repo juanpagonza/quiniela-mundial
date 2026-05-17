@@ -1,4 +1,4 @@
-import type { Tables, Enums } from '@/lib/database.types'
+import type { Database, Tables, Enums } from '@/lib/database.types'
 
 export type { Database, Json } from '@/lib/database.types'
 
@@ -13,6 +13,11 @@ export type PreguntaBonus = Tables<'preguntas_bonus'>
 export type PrediccionBonus = Tables<'predicciones_bonus'>
 export type Configuracion = Tables<'configuracion'>
 export type LogAuditoria = Tables<'log_auditoria'>
+
+// Views — generadas como cualquier tabla, pero todas las columnas son nullable
+// porque PostgREST no infiere NOT NULL en expresiones agregadas. En las queries
+// hacemos los castings/coalesce que correspondan.
+export type Leaderboard = Database['public']['Views']['leaderboard']['Row']
 
 // Enums — uniones de string literals.
 export type FasePartido = Enums<'fase_partido'>

@@ -20,6 +20,7 @@ export interface LeaderboardRow {
   nombre: string
   foto_url: string | null
   puntos: number
+  marcadores_exactos: number
 }
 
 /**
@@ -70,65 +71,34 @@ export async function obtenerProximoPartido(
 }
 
 /**
- * Top-N leaderboard computed in JS by summing puntos from all three
- * prediction tables per user. Until Fase 5 ships the SQL view this is
- * the source of truth; it stays correct after the view lands because
- * the math is identical — only the cost shifts.
+ * Reads the leaderboard view (created in Fase 5.3). The view already does
+ * the sum across predicciones_partido + predicciones_bonus + predicciones_torneo
+ * with correlated subqueries (no cardinality bug), and applies the ORDER BY
+ * we want: puntos desc, exactos desc, nombre asc.
  *
- * For 15 users + ~64 matches it's a single round-trip in the low kB.
+ * The view's columns are typed nullable (PostgREST can't infer NOT NULL on
+ * aggregate expressions), but every row in practice has values — we coalesce
+ * just to satisfy the type system. `limit` is optional; omit it for the full
+ * tabla.
  */
 export async function obtenerLeaderboard(
   supabase: Client,
-  limit = 5,
+  limit?: number,
 ): Promise<LeaderboardRow[]> {
-  const { data, error } = await supabase.from('usuarios').select(
-    `id, nombre, foto_url,
-     predicciones_partido (puntos_obtenidos),
-     predicciones_bonus (puntos_obtenidos),
-     predicciones_torneo (puntos_campeon, puntos_subcampeon, puntos_goleador)`,
-  )
+  const query = supabase
+    .from('leaderboard')
+    .select('usuario_id, nombre, foto_url, puntos_totales, marcadores_exactos')
+  const { data, error } = limit ? await query.limit(limit) : await query
 
   if (error) throw error
-  if (!data) return []
 
-  const rows: LeaderboardRow[] = data.map((u) => {
-    const partido = (u.predicciones_partido ?? []).reduce(
-      (s, p) => s + (p.puntos_obtenidos ?? 0),
-      0,
-    )
-    const bonus = (u.predicciones_bonus ?? []).reduce(
-      (s, p) => s + (p.puntos_obtenidos ?? 0),
-      0,
-    )
-    // predicciones_torneo is 1:1 with usuario via UNIQUE constraint, but
-    // the relationship returns an array shape from PostgREST.
-    const torneoArr = Array.isArray(u.predicciones_torneo)
-      ? u.predicciones_torneo
-      : u.predicciones_torneo
-        ? [u.predicciones_torneo]
-        : []
-    const torneo = torneoArr.reduce(
-      (s, t) =>
-        s +
-        (t.puntos_campeon ?? 0) +
-        (t.puntos_subcampeon ?? 0) +
-        (t.puntos_goleador ?? 0),
-      0,
-    )
-    return {
-      usuario_id: u.id,
-      nombre: u.nombre,
-      foto_url: u.foto_url,
-      puntos: partido + bonus + torneo,
-    }
-  })
-
-  rows.sort((a, b) => {
-    if (b.puntos !== a.puntos) return b.puntos - a.puntos
-    return a.nombre.localeCompare(b.nombre)
-  })
-
-  return rows.slice(0, limit)
+  return (data ?? []).map((r) => ({
+    usuario_id: r.usuario_id ?? '',
+    nombre: r.nombre ?? '',
+    foto_url: r.foto_url,
+    puntos: r.puntos_totales ?? 0,
+    marcadores_exactos: r.marcadores_exactos ?? 0,
+  }))
 }
 
 /**

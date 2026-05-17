@@ -135,6 +135,13 @@ export type Database = {
             foreignKeyName: "log_auditoria_admin_id_fkey"
             columns: ["admin_id"]
             isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "log_auditoria_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
             referencedRelation: "usuarios"
             referencedColumns: ["id"]
           },
@@ -243,6 +250,13 @@ export type Database = {
             foreignKeyName: "predicciones_bonus_usuario_id_fkey"
             columns: ["usuario_id"]
             isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "predicciones_bonus_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
             referencedRelation: "usuarios"
             referencedColumns: ["id"]
           },
@@ -289,6 +303,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "partidos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predicciones_partido_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
           },
           {
             foreignKeyName: "predicciones_partido_usuario_id_fkey"
@@ -350,6 +371,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "equipos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predicciones_torneo_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: true
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
           },
           {
             foreignKeyName: "predicciones_torneo_usuario_id_fkey"
@@ -433,10 +461,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      leaderboard: {
+        Row: {
+          foto_url: string | null
+          marcadores_exactos: number | null
+          nombre: string | null
+          puntos_totales: number | null
+          usuario_id: string | null
+        }
+        Insert: {
+          foto_url?: string | null
+          marcadores_exactos?: never
+          nombre?: string | null
+          puntos_totales?: never
+          usuario_id?: string | null
+        }
+        Update: {
+          foto_url?: string | null
+          marcadores_exactos?: never
+          nombre?: string | null
+          puntos_totales?: never
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      calcular_puntos_partido: {
+        Args: { p_partido_id: string }
+        Returns: undefined
+      }
+      mundial_iniciado: { Args: never; Returns: boolean }
     }
     Enums: {
       accion_auditoria:
