@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { obtenerPartidoDetalle } from '@/lib/queries/partido-detalle'
+import { obtenerPreguntasBonusPartido } from '@/lib/queries/preguntas-bonus'
 import { BanderaEquipo } from '@/components/bandera-equipo'
+import { PreguntasBonus } from '@/components/preguntas-bonus'
 import { formatearKickoff } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { ChevronLeftIcon } from 'lucide-react'
@@ -39,6 +41,13 @@ export default async function PartidoDetallePage({
   const kickoffPasado = new Date(partido.fecha_hora_kickoff) <= new Date()
   const yaEmpezo =
     partido.estado === 'en_curso' || partido.estado === 'finalizado' || kickoffPasado
+
+  // Bonus questions only matter pre-kickoff (the answer form). Post-kickoff
+  // display of bonus answers (with respuesta_correcta + per-user puntos) is
+  // a future enhancement — for now we just hide them.
+  const preguntasBonus = yaEmpezo
+    ? []
+    : await obtenerPreguntasBonusPartido(supabase, id, user.id)
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,14 +108,17 @@ export default async function PartidoDetallePage({
           miUserId={user.id}
         />
       ) : (
-        <FormularioPrediccion
-          partidoId={partido.id}
-          fechaHoraKickoff={partido.fecha_hora_kickoff}
-          equipoLocal={partido.equipo_local}
-          equipoVisitante={partido.equipo_visitante}
-          habilitadoParaPredecir={partido.habilitado_para_predecir}
-          prediccionExistente={partido.mi_prediccion}
-        />
+        <>
+          <FormularioPrediccion
+            partidoId={partido.id}
+            fechaHoraKickoff={partido.fecha_hora_kickoff}
+            equipoLocal={partido.equipo_local}
+            equipoVisitante={partido.equipo_visitante}
+            habilitadoParaPredecir={partido.habilitado_para_predecir}
+            prediccionExistente={partido.mi_prediccion}
+          />
+          <PreguntasBonus partidoId={partido.id} preguntas={preguntasBonus} />
+        </>
       )}
     </div>
   )
