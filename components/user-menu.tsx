@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOutIcon } from 'lucide-react'
+import { LogOutIcon, UserIcon } from 'lucide-react'
 import type { Usuario } from '@/lib/supabase/types'
 
 interface UserMenuProps {
@@ -64,6 +65,16 @@ export function UserMenu({ usuario, email }: UserMenuProps) {
             </span>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={(props) => (
+            <Link href="/perfil" {...props}>
+              <UserIcon className="size-4" />
+              Mi perfil
+            </Link>
+          )}
+          className="cursor-pointer"
+        />
         <DropdownMenuSeparator />
         <form action="/auth/signout" method="POST">
           <DropdownMenuItem
