@@ -16,6 +16,7 @@ const baseLinks = [
   { href: '/partidos', label: 'Partidos' },
   { href: '/tabla', label: 'Tabla' },
   { href: '/mi-quiniela', label: 'Mi Quiniela' },
+  { href: '/reglas', label: 'Reglas' },
 ]
 
 function isActive(pathname: string, href: string): boolean {

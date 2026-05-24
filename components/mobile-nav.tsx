@@ -8,6 +8,7 @@ import {
   ListOrderedIcon,
   TrophyIcon,
   ShieldIcon,
+  HelpCircleIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ const baseItems: NavItem[] = [
   { href: '/partidos', label: 'Partidos', Icon: CalendarIcon },
   { href: '/tabla', label: 'Tabla', Icon: ListOrderedIcon },
   { href: '/mi-quiniela', label: 'Mi quiniela', Icon: TrophyIcon },
+  { href: '/reglas', label: 'Reglas', Icon: HelpCircleIcon },
 ]
 
 function isActive(pathname: string, href: string): boolean {
