@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { actualizarConfiguracion } from '@/lib/actions/configuracion'
 import { INITIAL_CONFIGURACION_STATE } from '@/lib/configuracion-logic'
@@ -31,6 +31,37 @@ export function FormularioConfiguracion({
     INITIAL_CONFIGURACION_STATE,
   )
 
+  // Controlled inputs so the page revalidation after save doesn't trip the
+  // "default value changed after init" warning from Base UI. We re-sync from
+  // props on every successful save so the form shows the canonical value.
+  const [marcador, setMarcador] = useState(String(actual.puntos_marcador_exacto))
+  const [ganador, setGanador] = useState(String(actual.puntos_solo_ganador))
+  const [campeon, setCampeon] = useState(String(actual.puntos_campeon))
+  const [subcampeon, setSubcampeon] = useState(String(actual.puntos_subcampeon))
+  const [goleadorPts, setGoleadorPts] = useState(String(actual.puntos_goleador))
+  const [goleador, setGoleador] = useState(actual.goleador_oficial ?? '')
+
+  useEffect(() => {
+    if (state.result?.success) {
+      // Refresh local state from the (now-revalidated) props so we don't
+      // show stale numbers if the action coerced anything.
+      setMarcador(String(actual.puntos_marcador_exacto))
+      setGanador(String(actual.puntos_solo_ganador))
+      setCampeon(String(actual.puntos_campeon))
+      setSubcampeon(String(actual.puntos_subcampeon))
+      setGoleadorPts(String(actual.puntos_goleador))
+      setGoleador(actual.goleador_oficial ?? '')
+    }
+  }, [
+    state.result,
+    actual.puntos_marcador_exacto,
+    actual.puntos_solo_ganador,
+    actual.puntos_campeon,
+    actual.puntos_subcampeon,
+    actual.puntos_goleador,
+    actual.goleador_oficial,
+  ])
+
   useEffect(() => {
     if (!state.result) return
     if (state.result.success) {
@@ -57,31 +88,36 @@ export function FormularioConfiguracion({
           <PuntosField
             id="puntos_marcador_exacto"
             label="Marcador exacto"
-            defaultValue={actual.puntos_marcador_exacto}
+            value={marcador}
+            onChange={setMarcador}
             disabled={locked || pending}
           />
           <PuntosField
             id="puntos_solo_ganador"
             label="Solo ganador"
-            defaultValue={actual.puntos_solo_ganador}
+            value={ganador}
+            onChange={setGanador}
             disabled={locked || pending}
           />
           <PuntosField
             id="puntos_campeon"
             label="Campeón del torneo"
-            defaultValue={actual.puntos_campeon}
+            value={campeon}
+            onChange={setCampeon}
             disabled={locked || pending}
           />
           <PuntosField
             id="puntos_subcampeon"
             label="Subcampeón"
-            defaultValue={actual.puntos_subcampeon}
+            value={subcampeon}
+            onChange={setSubcampeon}
             disabled={locked || pending}
           />
           <PuntosField
             id="puntos_goleador"
             label="Goleador del torneo"
-            defaultValue={actual.puntos_goleador}
+            value={goleadorPts}
+            onChange={setGoleadorPts}
             disabled={locked || pending}
           />
         </div>
@@ -102,7 +138,8 @@ export function FormularioConfiguracion({
             name="goleador_oficial"
             type="text"
             maxLength={80}
-            defaultValue={actual.goleador_oficial ?? ''}
+            value={goleador}
+            onChange={(e) => setGoleador(e.target.value)}
             placeholder="Mbappé"
             disabled={pending}
             autoComplete="off"
@@ -126,12 +163,14 @@ export function FormularioConfiguracion({
 function PuntosField({
   id,
   label,
-  defaultValue,
+  value,
+  onChange,
   disabled,
 }: {
   id: string
   label: string
-  defaultValue: number
+  value: string
+  onChange: (v: string) => void
   disabled: boolean
 }) {
   return (
@@ -145,7 +184,8 @@ function PuntosField({
         max={100}
         step={1}
         required
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         className="font-mono tabular-nums"
       />

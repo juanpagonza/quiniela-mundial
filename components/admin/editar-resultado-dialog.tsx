@@ -47,6 +47,25 @@ export function EditarResultadoDialog({
     INITIAL_ADMIN_PARTIDO_STATE,
   )
 
+  // Controlled inputs so prop updates after revalidation don't trip Base UI's
+  // "default value changed after init" warning. Re-sync when the dialog opens
+  // so the form picks up fresh data.
+  const [localInput, setLocalInput] = useState(
+    marcadorLocal != null ? String(marcadorLocal) : '',
+  )
+  const [visitInput, setVisitInput] = useState(
+    marcadorVisitante != null ? String(marcadorVisitante) : '',
+  )
+  const [estadoInput, setEstadoInput] = useState<EstadoPartido>(estado)
+
+  useEffect(() => {
+    if (open) {
+      setLocalInput(marcadorLocal != null ? String(marcadorLocal) : '')
+      setVisitInput(marcadorVisitante != null ? String(marcadorVisitante) : '')
+      setEstadoInput(estado)
+    }
+  }, [open, marcadorLocal, marcadorVisitante, estado])
+
   useEffect(() => {
     if (!state.result) return
     if (state.result.success) {
@@ -94,7 +113,8 @@ export function EditarResultadoDialog({
                 inputMode="numeric"
                 min={0}
                 max={50}
-                defaultValue={marcadorLocal ?? ''}
+                value={localInput}
+                onChange={(e) => setLocalInput(e.target.value)}
                 disabled={pending}
                 className="h-14 text-center font-mono text-2xl font-semibold tabular-nums"
                 placeholder="—"
@@ -120,7 +140,8 @@ export function EditarResultadoDialog({
                 inputMode="numeric"
                 min={0}
                 max={50}
-                defaultValue={marcadorVisitante ?? ''}
+                value={visitInput}
+                onChange={(e) => setVisitInput(e.target.value)}
                 disabled={pending}
                 className="h-14 text-center font-mono text-2xl font-semibold tabular-nums"
                 placeholder="—"
@@ -133,7 +154,8 @@ export function EditarResultadoDialog({
             <select
               id="estado"
               name="estado"
-              defaultValue={estado}
+              value={estadoInput}
+              onChange={(e) => setEstadoInput(e.target.value as EstadoPartido)}
               disabled={pending}
               className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >

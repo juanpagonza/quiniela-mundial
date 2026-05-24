@@ -46,15 +46,25 @@ export function FormularioBonusDialog({
     INITIAL_ADMIN_BONUS_STATE,
   )
 
-  // Local state for tipo so the opciones field can show/hide.
+  // Local state for every field so they're controlled — avoids Base UI's
+  // "default value changed after init" warning when the parent revalidates.
+  // Re-sync from props every time the dialog opens.
   const [tipo, setTipo] = useState<TipoPreguntaBonus>(
     pregunta?.tipo ?? 'si_no',
   )
+  const [enunciado, setEnunciado] = useState<string>(pregunta?.enunciado ?? '')
+  const [opciones, setOpciones] = useState<string>(
+    (pregunta?.opciones ?? []).join('\n'),
+  )
+  const [puntos, setPuntos] = useState<string>(String(pregunta?.puntos ?? 2))
 
-  // Reset local state every time the dialog opens (covers the "open edit
-  // dialog A, close, open edit dialog B" case).
   useEffect(() => {
-    if (open) setTipo(pregunta?.tipo ?? 'si_no')
+    if (open) {
+      setTipo(pregunta?.tipo ?? 'si_no')
+      setEnunciado(pregunta?.enunciado ?? '')
+      setOpciones((pregunta?.opciones ?? []).join('\n'))
+      setPuntos(String(pregunta?.puntos ?? 2))
+    }
   }, [open, pregunta])
 
   useEffect(() => {
@@ -119,7 +129,8 @@ export function FormularioBonusDialog({
             <textarea
               id="enunciado"
               name="enunciado"
-              defaultValue={pregunta?.enunciado ?? ''}
+              value={enunciado}
+              onChange={(e) => setEnunciado(e.target.value)}
               required
               rows={2}
               maxLength={280}
@@ -135,7 +146,8 @@ export function FormularioBonusDialog({
               <textarea
                 id="opciones"
                 name="opciones"
-                defaultValue={(pregunta?.opciones ?? []).join('\n')}
+                value={opciones}
+                onChange={(e) => setOpciones(e.target.value)}
                 rows={4}
                 disabled={pending}
                 className="rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -152,7 +164,8 @@ export function FormularioBonusDialog({
               type="number"
               min={1}
               max={20}
-              defaultValue={pregunta?.puntos ?? 2}
+              value={puntos}
+              onChange={(e) => setPuntos(e.target.value)}
               required
               disabled={pending}
               className="w-24"
