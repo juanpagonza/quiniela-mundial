@@ -1,0 +1,61 @@
+name: Sync match results
+
+# Runs every 5 minutes to pull live + finished match results from
+# football-data.org and update partidos.{estado, marcador_*_real}.
+#
+# Why GitHub Actions instead of Vercel cron?
+# Vercel Hobby plan caps crons at once-per-day. We need 5-minute cadence
+# during World Cup matches so the leaderboard reflects live scores.
+#
+# Billing note: this workflow uses ~8,640 minutes/month at 5-min cadence
+# on a private repo (free quota = 2,000 min/month). Options to fit free:
+#   1. Make the repo public (no quota for public repos)
+#   2. Increase the interval below to `*/30 * * * *` (= 1,440 min/month)
+#   3. Use an external cron service (cron-job.org is free, 1-min cadence)
+# Even at $0.008/min over-quota, exceeding by 6,640 min = $53/month, so
+# this is NOT something to leave running 24/7 long-term without one of
+# the above. Recommended: turn off this workflow when the tournament ends.
+
+on:
+  schedule:
+    # Every 5 minutes — minute granularity is GitHub's smallest. Note that
+    # actual fire times can be delayed by up to ~15 min during busy hours
+    # on GitHub's runner queue. That's fine for our use case.
+    - cron: '*/5 * * * *'
+  # Lets you trigger the workflow manually from the Actions tab in GitHub,
+  # useful for debugging or kicking a one-off sync after a manual DB edit.
+  workflow_dispatch:
+
+# If a previous run is still in flight when the next schedule fires, kill
+# the old one. Prevents pile-ups when football-data.org is slow.
+concurrency:
+  group: sync-results
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # 2-minute cap — the endpoint should respond in <30s normally. If it
+    # hangs longer than this something is wrong and we'd rather fail fast.
+    timeout-minutes: 2
+    steps:
+      - name: Call /api/cron/sync-results
+        env:
+          # CRON_SECRET must be set as a repo secret in
+          # Settings → Secrets and variables → Actions → New repository secret
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET repo secret is missing"
+            exit 1
+          fi
+
+          # -f makes curl exit non-zero on HTTP 4xx/5xx so the workflow
+          # actually fails (instead of "succeeding" with an error body).
+          # -s silences progress, -S keeps the error message visible.
+          RESPONSE=$(curl -fsS \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://quiniela-mundial-pearl.vercel.app/api/cron/sync-results")
+
+          echo "Sync response: ${RESPONSE}"
