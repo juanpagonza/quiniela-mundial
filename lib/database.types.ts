@@ -39,6 +39,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      ajustes_puntos_manuales: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          motivo: string
+          puntos: number
+          usuario_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          motivo: string
+          puntos: number
+          usuario_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          motivo?: string
+          puntos?: number
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ajustes_puntos_manuales_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "ajustes_puntos_manuales_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ajustes_puntos_manuales_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["usuario_id"]
+          },
+          {
+            foreignKeyName: "ajustes_puntos_manuales_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracion: {
         Row: {
           goleador_oficial: string | null
