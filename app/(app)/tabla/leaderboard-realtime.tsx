@@ -15,11 +15,15 @@ export function LeaderboardRealtime({
   miUserId,
 }: LeaderboardRealtimeProps) {
   const [filas, setFilas] = useState<LeaderboardRow[]>(filasIniciales)
-  const [actualizadoEn, setActualizadoEn] = useState<Date>(() => new Date())
+  // Null on first render to avoid SSR/client time mismatch — set in the
+  // mount effect below and then updated on every realtime refetch.
+  const [actualizadoEn, setActualizadoEn] = useState<Date | null>(null)
   const [conectado, setConectado] = useState<boolean>(false)
 
   useEffect(() => {
     const supabase = createClient()
+    // Set the initial timestamp after mount so SSR/CSR agree.
+    setActualizadoEn(new Date())
 
     const refetch = async () => {
       const { data, error } = await supabase
@@ -86,13 +90,17 @@ export function LeaderboardRealtime({
           )}
         />
         {conectado ? 'En vivo' : 'Conectando'}
-        <span className="text-muted-foreground/50">·</span>
-        Actualizado{' '}
-        {actualizadoEn.toLocaleTimeString('es', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        })}
+        {actualizadoEn && (
+          <>
+            <span className="text-muted-foreground/50">·</span>
+            Actualizado{' '}
+            {actualizadoEn.toLocaleTimeString('es', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </>
+        )}
       </p>
     </div>
   )

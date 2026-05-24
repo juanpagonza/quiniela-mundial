@@ -44,12 +44,13 @@ export default function RootLayout({
       className={`${manrope.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
+        {/*
+          forcedTheme + no system detection so next-themes doesn't inject
+          a script tag inside <body> (Next 16 / React 19 warn about that,
+          and we don't have a theme switcher anyway). When we add dark
+          mode toggle, flip back to attribute="class" + enableSystem.
+        */}
+        <ThemeProvider attribute="class" forcedTheme="light">
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>
