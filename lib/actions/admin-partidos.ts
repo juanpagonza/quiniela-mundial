@@ -163,10 +163,14 @@ export async function importarFixtureAction(
     revalidatePath('/admin')
     revalidatePath('/partidos')
     revalidatePath('/')
+    const omitidos =
+      result.partidos_omitidos_tbd > 0
+        ? ` (${result.partidos_omitidos_tbd} omitidos por TBD)`
+        : ''
     return {
       result: {
         success: true,
-        message: `Importados ${result.equipos_importados} equipos y ${result.partidos_importados} partidos`,
+        message: `Importados ${result.equipos_importados} equipos y ${result.partidos_importados} partidos${omitidos}`,
       },
     }
   } catch (e) {

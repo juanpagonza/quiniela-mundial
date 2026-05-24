@@ -85,6 +85,7 @@ function tlaToIso2(tla: string | null): string {
 export interface ImportarFixtureResult {
   equipos_importados: number
   partidos_importados: number
+  partidos_omitidos_tbd: number
 }
 
 interface EquipoRow {
@@ -119,17 +120,25 @@ export async function importarFixture(
     `/competitions/${competitionId}/matches`,
   )
 
-  // Dedup teams across matches (a team appears in many matches).
+  // Dedup teams across matches (a team appears in many matches). Skip
+  // placeholder TBD teams — those come as { id: null, name: null, ... }
+  // for slots waiting on playoff results.
   const teamsByApiId = new Map<number, ApiTeam>()
   for (const match of response.matches) {
-    teamsByApiId.set(match.homeTeam.id, match.homeTeam)
-    teamsByApiId.set(match.awayTeam.id, match.awayTeam)
+    if (isResolved(match.homeTeam)) {
+      teamsByApiId.set(match.homeTeam.id, match.homeTeam)
+    }
+    if (isResolved(match.awayTeam)) {
+      teamsByApiId.set(match.awayTeam.id, match.awayTeam)
+    }
   }
 
   const equiposRows: EquipoRow[] = Array.from(teamsByApiId.values()).map((t) => ({
-    nombre: t.name,
+    // isResolved narrowed both id and name to non-null, so the assertions
+    // here are safe (TS doesn't propagate the narrow through Map.values()).
+    nombre: t.name!,
     codigo_pais: tlaToIso2(t.tla),
-    api_id: t.id,
+    api_id: t.id!,
   }))
 
   const { data: equipos, error: equiposError } = await client
@@ -147,14 +156,27 @@ export async function importarFixture(
     equipoIdByApiId.set(e.api_id, e.id)
   }
 
-  const partidosRows: PartidoRow[] = response.matches.map((m) => ({
-    api_id: m.id,
-    equipo_local_id: equipoIdByApiId.get(m.homeTeam.id)!,
-    equipo_visitante_id: equipoIdByApiId.get(m.awayTeam.id)!,
-    fecha_hora_kickoff: m.utcDate,
-    fase: STAGE_TO_FASE[m.stage],
-    estado: STATUS_TO_ESTADO[m.status],
-  }))
+  // Only import matches where BOTH teams are resolved. The skipped ones
+  // (TBD slots) will get imported on a future re-run once football-data.org
+  // fills in the playoff winners — the upsert is idempotent.
+  let partidos_omitidos_tbd = 0
+  const partidosRows: PartidoRow[] = []
+  for (const m of response.matches) {
+    const localId = m.homeTeam.id != null ? equipoIdByApiId.get(m.homeTeam.id) : undefined
+    const visitId = m.awayTeam.id != null ? equipoIdByApiId.get(m.awayTeam.id) : undefined
+    if (!localId || !visitId) {
+      partidos_omitidos_tbd++
+      continue
+    }
+    partidosRows.push({
+      api_id: m.id,
+      equipo_local_id: localId,
+      equipo_visitante_id: visitId,
+      fecha_hora_kickoff: m.utcDate,
+      fase: STAGE_TO_FASE[m.stage],
+      estado: STATUS_TO_ESTADO[m.status],
+    })
+  }
 
   const { error: partidosError } = await client
     .from('partidos')
@@ -167,5 +189,11 @@ export async function importarFixture(
   return {
     equipos_importados: equiposRows.length,
     partidos_importados: partidosRows.length,
+    partidos_omitidos_tbd,
   }
+}
+
+/** True when the API gave us enough data to insert this team into equipos. */
+function isResolved(t: ApiTeam): t is ApiTeam & { id: number; name: string } {
+  return t.id != null && t.name != null && t.name.length > 0
 }

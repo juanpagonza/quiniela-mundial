@@ -180,7 +180,54 @@ describe('importarFixture', () => {
 
     const result = await importarFixture(client)
 
-    expect(result).toEqual({ equipos_importados: 3, partidos_importados: 2 })
+    expect(result).toEqual({
+      equipos_importados: 3,
+      partidos_importados: 2,
+      partidos_omitidos_tbd: 0,
+    })
+  })
+
+  it('skips matches with TBD teams (placeholder { id: null, name: null })', async () => {
+    // Simulates the World Cup 2026 case where some playoff slots haven't
+    // been filled yet. Football-data.org returns the match with a fully-null
+    // team object — we should silently skip those matches AND not try to
+    // upsert a "null" team into equipos.
+    mockApi({
+      count: 2,
+      matches: [
+        {
+          id: 1001,
+          utcDate: '2026-06-11T20:00:00Z',
+          status: 'TIMED',
+          stage: 'GROUP_STAGE',
+          homeTeam: { id: 10, name: 'Argentina', shortName: 'ARG', tla: 'ARG', crest: null },
+          awayTeam: { id: 20, name: 'Brazil', shortName: 'BRA', tla: 'BRA', crest: null },
+          score: { winner: null, fullTime: { home: null, away: null }, halfTime: { home: null, away: null } },
+        },
+        {
+          id: 1002,
+          utcDate: '2026-06-12T20:00:00Z',
+          status: 'TIMED',
+          stage: 'GROUP_STAGE',
+          homeTeam: { id: 10, name: 'Argentina', shortName: 'ARG', tla: 'ARG', crest: null },
+          // TBD slot — comes back as all-null from the API.
+          awayTeam: { id: null, name: null, shortName: null, tla: null, crest: null },
+          score: { winner: null, fullTime: { home: null, away: null }, halfTime: { home: null, away: null } },
+        },
+      ],
+    })
+    const { client } = createMockClient([
+      { id: 'arg', api_id: 10 },
+      { id: 'bra', api_id: 20 },
+    ])
+
+    const result = await importarFixture(client)
+
+    expect(result).toEqual({
+      equipos_importados: 2,
+      partidos_importados: 1,
+      partidos_omitidos_tbd: 1,
+    })
   })
 
   it('is idempotent across runs (relies on onConflict + UNIQUE constraint)', async () => {

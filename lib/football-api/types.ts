@@ -20,9 +20,13 @@ export type ApiStage =
   | 'THIRD_PLACE'
   | 'FINAL'
 
+// All fields are nullable because football-data.org returns a placeholder
+// team object ({id: null, name: null, ...}) for matches where the participant
+// is still TBD — typical for World Cup 2026 with its expanded 48-team format
+// where several slots come from playoffs that haven't been played yet.
 export interface ApiTeam {
-  id: number
-  name: string
+  id: number | null
+  name: string | null
   shortName: string | null
   tla: string | null
   crest: string | null
