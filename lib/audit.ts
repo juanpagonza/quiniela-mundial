@@ -19,8 +19,18 @@ export interface RegistrarAccionInput {
  * the admin UI can render a diff of arbitrary entity shapes.
  *
  * This helper is the single chokepoint for audit writes. Server Actions
- * that modify admin-controlled state should call it after the underlying
- * mutation succeeds.
+ * that modify admin-controlled state must call it after the underlying
+ * mutation succeeds. The pattern used everywhere in lib/actions/* is:
+ *
+ *   1. requireAdmin() — fail fast on unauthorized callers, get user.id
+ *   2. SELECT the row before mutating (capture `anterior`)
+ *   3. UPDATE/INSERT/DELETE via createServiceRoleClient()
+ *   4. registrarAccion({ adminId: user.id, accion, ... }) with the diff
+ *   5. revalidatePath(...) to refresh affected pages
+ *
+ * One exception: importarFixtureAction does NOT log — it's a bulk import
+ * of dozens of equipos+partidos and there's no enum value that fits.
+ * Add a dedicated enum + entry if/when this stops being acceptable.
  */
 export async function registrarAccion(input: RegistrarAccionInput): Promise<void> {
   const client = createServiceRoleClient()

@@ -3,13 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireAdmin } from '@/lib/auth/admin'
+import { registrarAccion } from '@/lib/audit'
 import {
   validateCrearPregunta,
   type AdminBonusActionState,
   type CrearPreguntaInput,
 } from '@/lib/preguntas-bonus-logic'
 import { validateRespuestaBonus } from '@/lib/predicciones-bonus-logic'
-import type { TipoPreguntaBonus } from '@/lib/supabase/types'
+import type { Json, TipoPreguntaBonus } from '@/lib/supabase/types'
 
 // --- Helpers ------------------------------------------------------------
 
@@ -36,7 +37,7 @@ export async function crearPreguntaBonus(
   _prev: AdminBonusActionState,
   formData: FormData,
 ): Promise<AdminBonusActionState> {
-  await requireAdmin()
+  const { user } = await requireAdmin()
 
   const input: CrearPreguntaInput = {
     partidoId: String(formData.get('partidoId') ?? ''),
@@ -56,17 +57,37 @@ export async function crearPreguntaBonus(
   // independent of the caller's RLS context and matches the pattern used
   // by importar-fixture.
   const client = createServiceRoleClient()
-  const { error } = await client.from('preguntas_bonus').insert({
-    partido_id: input.partidoId,
-    tipo: input.tipo,
-    enunciado: input.enunciado.trim(),
-    opciones: input.opciones,
-    puntos: input.puntos,
-  })
+  const enunciadoTrim = input.enunciado.trim()
+  const { data: creada, error } = await client
+    .from('preguntas_bonus')
+    .insert({
+      partido_id: input.partidoId,
+      tipo: input.tipo,
+      enunciado: enunciadoTrim,
+      opciones: input.opciones,
+      puntos: input.puntos,
+    })
+    .select('id')
+    .single()
 
   if (error) {
     return { result: { success: false, error: error.message } }
   }
+
+  await registrarAccion({
+    adminId: user.id,
+    accion: 'crear_pregunta_bonus',
+    entidadTipo: 'pregunta_bonus',
+    entidadId: creada?.id ?? null,
+    valorAnterior: null,
+    valorNuevo: {
+      partido_id: input.partidoId,
+      tipo: input.tipo,
+      enunciado: enunciadoTrim,
+      opciones: input.opciones,
+      puntos: input.puntos,
+    },
+  })
 
   revalidateAdminPaths(input.partidoId)
   return { result: { success: true } }
@@ -78,7 +99,7 @@ export async function editarPreguntaBonus(
   _prev: AdminBonusActionState,
   formData: FormData,
 ): Promise<AdminBonusActionState> {
-  await requireAdmin()
+  const { user } = await requireAdmin()
 
   const preguntaId = String(formData.get('preguntaId') ?? '')
   const partidoId = String(formData.get('partidoId') ?? '')
@@ -101,11 +122,19 @@ export async function editarPreguntaBonus(
   }
 
   const client = createServiceRoleClient()
+  const enunciadoTrim = input.enunciado.trim()
+
+  const { data: anterior } = await client
+    .from('preguntas_bonus')
+    .select('tipo, enunciado, opciones, puntos')
+    .eq('id', preguntaId)
+    .maybeSingle()
+
   const { error } = await client
     .from('preguntas_bonus')
     .update({
       tipo: input.tipo,
-      enunciado: input.enunciado.trim(),
+      enunciado: enunciadoTrim,
       opciones: input.opciones,
       puntos: input.puntos,
       updated_at: new Date().toISOString(),
@@ -115,6 +144,20 @@ export async function editarPreguntaBonus(
   if (error) {
     return { result: { success: false, error: error.message } }
   }
+
+  await registrarAccion({
+    adminId: user.id,
+    accion: 'editar_pregunta_bonus',
+    entidadTipo: 'pregunta_bonus',
+    entidadId: preguntaId,
+    valorAnterior: anterior ?? null,
+    valorNuevo: {
+      tipo: input.tipo,
+      enunciado: enunciadoTrim,
+      opciones: input.opciones,
+      puntos: input.puntos,
+    },
+  })
 
   revalidateAdminPaths(partidoId)
   return { result: { success: true } }
@@ -126,7 +169,7 @@ export async function eliminarPreguntaBonus(
   _prev: AdminBonusActionState,
   formData: FormData,
 ): Promise<AdminBonusActionState> {
-  await requireAdmin()
+  const { user } = await requireAdmin()
 
   const preguntaId = String(formData.get('preguntaId') ?? '')
   const partidoId = String(formData.get('partidoId') ?? '')
@@ -136,6 +179,16 @@ export async function eliminarPreguntaBonus(
   }
 
   const client = createServiceRoleClient()
+
+  // Snapshot before delete so the audit shows what was removed. CASCADE
+  // on the FK from predicciones_bonus also drops any answers people gave,
+  // which is worth being able to reconstruct later.
+  const { data: anterior } = await client
+    .from('preguntas_bonus')
+    .select('partido_id, tipo, enunciado, opciones, puntos, respuesta_correcta')
+    .eq('id', preguntaId)
+    .maybeSingle()
+
   const { error } = await client
     .from('preguntas_bonus')
     .delete()
@@ -144,6 +197,15 @@ export async function eliminarPreguntaBonus(
   if (error) {
     return { result: { success: false, error: error.message } }
   }
+
+  await registrarAccion({
+    adminId: user.id,
+    accion: 'eliminar_pregunta_bonus',
+    entidadTipo: 'pregunta_bonus',
+    entidadId: preguntaId,
+    valorAnterior: anterior ?? null,
+    valorNuevo: null,
+  })
 
   if (partidoId) revalidateAdminPaths(partidoId)
   return { result: { success: true } }
@@ -155,7 +217,7 @@ export async function setearRespuestaCorrecta(
   _prev: AdminBonusActionState,
   formData: FormData,
 ): Promise<AdminBonusActionState> {
-  await requireAdmin()
+  const { user } = await requireAdmin()
 
   const preguntaId = String(formData.get('preguntaId') ?? '')
   const tipo = String(formData.get('tipo') ?? '') as TipoPreguntaBonus
@@ -188,6 +250,13 @@ export async function setearRespuestaCorrecta(
   }
 
   const client = createServiceRoleClient()
+
+  const { data: anterior } = await client
+    .from('preguntas_bonus')
+    .select('respuesta_correcta')
+    .eq('id', preguntaId)
+    .maybeSingle()
+
   const { error } = await client
     .from('preguntas_bonus')
     .update({
@@ -199,6 +268,23 @@ export async function setearRespuestaCorrecta(
   if (error) {
     return { result: { success: false, error: error.message } }
   }
+
+  // No dedicated accion enum value for "setear respuesta correcta" — it
+  // logically is an edit of the pregunta (the field that changed is
+  // respuesta_correcta) so we file it as editar_pregunta_bonus. The
+  // diff makes it obvious what changed.
+  await registrarAccion({
+    adminId: user.id,
+    accion: 'editar_pregunta_bonus',
+    entidadTipo: 'pregunta_bonus',
+    entidadId: preguntaId,
+    valorAnterior: {
+      respuesta_correcta: (anterior?.respuesta_correcta ?? null) as Json,
+    },
+    valorNuevo: {
+      respuesta_correcta: v.respuestaJson as Json,
+    },
+  })
 
   // The DB trigger recomputes puntos on every prediction for this question,
   // so revalidate the tabla and the dashboard too.
