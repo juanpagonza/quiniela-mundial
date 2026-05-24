@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -55,16 +56,22 @@ export function UserMenu({ usuario, email }: UserMenuProps) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" sideOffset={8} className="min-w-56">
-        <DropdownMenuLabel className="px-2 py-2">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium leading-tight text-foreground">
-              {usuario.nombre}
-            </span>
-            <span className="text-xs leading-tight text-muted-foreground">
-              {email}
-            </span>
-          </div>
-        </DropdownMenuLabel>
+        {/* DropdownMenuLabel renders Base UI's GroupLabel which requires a
+            Group ancestor — without it, Base UI throws error #31 at runtime
+            ("MenuGroupRootContext is missing"). The Group wrapper here is
+            semantically harmless and silences the error. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2 py-2">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium leading-tight text-foreground">
+                {usuario.nombre}
+              </span>
+              <span className="text-xs leading-tight text-muted-foreground">
+                {email}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={(props) => (
