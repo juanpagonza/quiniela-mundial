@@ -6,18 +6,9 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { registrarAccion } from '@/lib/audit'
 import {
   validateCrearAjuste,
+  type AjusteActionState,
   type CrearAjusteInput,
 } from '@/lib/ajustes-logic'
-
-export type AjusteResult =
-  | { success: true }
-  | { success: false; error: string }
-
-export interface AjusteActionState {
-  result: AjusteResult | null
-}
-
-export const INITIAL_AJUSTE_STATE: AjusteActionState = { result: null }
 
 export async function crearAjuste(
   _prev: AjusteActionState,

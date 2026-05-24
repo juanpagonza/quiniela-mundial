@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import {
-  eliminarPreguntaBonus,
-  INITIAL_ADMIN_BONUS_STATE,
-} from '@/lib/actions/preguntas-bonus'
+import { eliminarPreguntaBonus } from '@/lib/actions/preguntas-bonus'
+import { INITIAL_ADMIN_BONUS_STATE } from '@/lib/preguntas-bonus-logic'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

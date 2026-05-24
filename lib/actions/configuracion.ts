@@ -6,19 +6,10 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { registrarAccion } from '@/lib/audit'
 import {
   validateConfiguracion,
+  type ConfiguracionActionState,
   type ConfiguracionInput,
 } from '@/lib/configuracion-logic'
 import { mundialIniciado } from '@/lib/queries/torneo'
-
-export type ConfiguracionResult =
-  | { success: true }
-  | { success: false; error: string }
-
-export interface ConfiguracionActionState {
-  result: ConfiguracionResult | null
-}
-
-export const INITIAL_CONFIGURACION_STATE: ConfiguracionActionState = { result: null }
 
 /**
  * Updates configuracion (row id=1) with the provided puntos + goleador.

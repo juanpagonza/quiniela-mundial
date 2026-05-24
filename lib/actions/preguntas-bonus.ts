@@ -5,20 +5,11 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { requireAdmin } from '@/lib/auth/admin'
 import {
   validateCrearPregunta,
+  type AdminBonusActionState,
   type CrearPreguntaInput,
 } from '@/lib/preguntas-bonus-logic'
 import { validateRespuestaBonus } from '@/lib/predicciones-bonus-logic'
 import type { TipoPreguntaBonus } from '@/lib/supabase/types'
-
-export type AdminBonusResult =
-  | { success: true }
-  | { success: false; error: string }
-
-export interface AdminBonusActionState {
-  result: AdminBonusResult | null
-}
-
-export const INITIAL_ADMIN_BONUS_STATE: AdminBonusActionState = { result: null }
 
 // --- Helpers ------------------------------------------------------------
 

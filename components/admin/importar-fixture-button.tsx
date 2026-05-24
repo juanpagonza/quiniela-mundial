@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import {
-  importarFixtureAction,
-  INITIAL_ADMIN_PARTIDO_STATE,
-} from '@/lib/actions/admin-partidos'
+import { importarFixtureAction } from '@/lib/actions/admin-partidos'
+import { INITIAL_ADMIN_PARTIDO_STATE } from '@/lib/admin-partidos-state'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

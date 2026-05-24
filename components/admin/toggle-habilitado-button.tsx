@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect } from 'react'
 import { toast } from 'sonner'
-import {
-  toggleHabilitadoPartido,
-  INITIAL_ADMIN_PARTIDO_STATE,
-} from '@/lib/actions/admin-partidos'
+import { toggleHabilitadoPartido } from '@/lib/actions/admin-partidos'
+import { INITIAL_ADMIN_PARTIDO_STATE } from '@/lib/admin-partidos-state'
 import { Button } from '@/components/ui/button'
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'

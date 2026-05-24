@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { crearAjuste, INITIAL_AJUSTE_STATE } from '@/lib/actions/ajustes'
+import { crearAjuste } from '@/lib/actions/ajustes'
+import { INITIAL_AJUSTE_STATE } from '@/lib/ajustes-logic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

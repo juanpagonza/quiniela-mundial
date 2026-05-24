@@ -1,5 +1,19 @@
 import type { TipoPreguntaBonus } from '@/lib/supabase/types'
 
+// Result + action state used by the admin bonus Server Actions and their
+// React consumers. Kept here (not in the 'use server' action file) because
+// 'use server' files can only export async functions — exporting a const
+// object errors at module evaluation.
+export type AdminBonusResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export interface AdminBonusActionState {
+  result: AdminBonusResult | null
+}
+
+export const INITIAL_ADMIN_BONUS_STATE: AdminBonusActionState = { result: null }
+
 export interface CrearPreguntaInput {
   partidoId: string
   tipo: TipoPreguntaBonus

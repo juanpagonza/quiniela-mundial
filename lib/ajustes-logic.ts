@@ -1,3 +1,16 @@
+// Server Action state shapes for the ajustes form. Kept here (not in
+// the 'use server' action file) because that file can only export async
+// functions — a const object export would crash at module evaluation.
+export type AjusteResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export interface AjusteActionState {
+  result: AjusteResult | null
+}
+
+export const INITIAL_AJUSTE_STATE: AjusteActionState = { result: null }
+
 export interface CrearAjusteInput {
   usuario_id: string
   puntos: number

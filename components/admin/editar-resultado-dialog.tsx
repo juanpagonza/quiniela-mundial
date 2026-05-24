@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import {
-  editarResultadoPartido,
-  INITIAL_ADMIN_PARTIDO_STATE,
-} from '@/lib/actions/admin-partidos'
+import { editarResultadoPartido } from '@/lib/actions/admin-partidos'
+import { INITIAL_ADMIN_PARTIDO_STATE } from '@/lib/admin-partidos-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

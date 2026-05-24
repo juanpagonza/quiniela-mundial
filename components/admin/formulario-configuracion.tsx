@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect } from 'react'
 import { toast } from 'sonner'
-import {
-  actualizarConfiguracion,
-  INITIAL_CONFIGURACION_STATE,
-} from '@/lib/actions/configuracion'
+import { actualizarConfiguracion } from '@/lib/actions/configuracion'
+import { INITIAL_CONFIGURACION_STATE } from '@/lib/configuracion-logic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import {
-  setearRespuestaCorrecta,
-  INITIAL_ADMIN_BONUS_STATE,
-} from '@/lib/actions/preguntas-bonus'
+import { setearRespuestaCorrecta } from '@/lib/actions/preguntas-bonus'
+import { INITIAL_ADMIN_BONUS_STATE } from '@/lib/preguntas-bonus-logic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Json, TipoPreguntaBonus } from '@/lib/supabase/types'

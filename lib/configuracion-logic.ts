@@ -1,3 +1,17 @@
+// Server Action state shapes for the configuracion form. Kept here (not in
+// the 'use server' action file) — see note in ajustes-logic.ts for the why.
+export type ConfiguracionResult =
+  | { success: true }
+  | { success: false; error: string }
+
+export interface ConfiguracionActionState {
+  result: ConfiguracionResult | null
+}
+
+export const INITIAL_CONFIGURACION_STATE: ConfiguracionActionState = {
+  result: null,
+}
+
 export interface ConfiguracionInput {
   puntos_marcador_exacto: number
   puntos_solo_ganador: number

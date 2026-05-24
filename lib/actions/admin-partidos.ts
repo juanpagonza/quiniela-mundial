@@ -5,19 +5,8 @@ import { requireAdmin } from '@/lib/auth/admin'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { registrarAccion } from '@/lib/audit'
 import { importarFixture } from '@/lib/football-api/import-fixture'
+import type { AdminPartidoActionState } from '@/lib/admin-partidos-state'
 import type { EstadoPartido } from '@/lib/supabase/types'
-
-export type AdminPartidoResult =
-  | { success: true; message?: string }
-  | { success: false; error: string }
-
-export interface AdminPartidoActionState {
-  result: AdminPartidoResult | null
-}
-
-export const INITIAL_ADMIN_PARTIDO_STATE: AdminPartidoActionState = {
-  result: null,
-}
 
 const ESTADOS_VALIDOS: ReadonlyArray<EstadoPartido> = [
   'programado',
