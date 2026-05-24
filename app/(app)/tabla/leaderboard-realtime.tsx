@@ -128,10 +128,13 @@ function LeaderboardTable({
 
   return (
     <ol className="overflow-hidden rounded-2xl border border-border bg-card">
-      <li className="grid grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      <li className="grid grid-cols-[1.75rem_1fr_2.75rem_3.5rem] sm:grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
         <span>#</span>
         <span>Participante</span>
-        <span className="text-right">Exactos</span>
+        <span className="text-right" aria-label="Marcadores exactos">
+          <span className="sm:hidden">Ex.</span>
+          <span className="hidden sm:inline">Exactos</span>
+        </span>
         <span className="text-right">Puntos</span>
       </li>
       {filas.map((row, i) => {
@@ -140,7 +143,7 @@ function LeaderboardTable({
           <li
             key={row.usuario_id}
             className={cn(
-              'grid grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0',
+              'grid grid-cols-[1.75rem_1fr_2.75rem_3.5rem] sm:grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0',
               mia && 'bg-accent/40',
             )}
           >

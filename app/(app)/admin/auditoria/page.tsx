@@ -51,6 +51,7 @@ export default async function AdminAuditoriaPage({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const filtroQs = buildFilterQs({ accion, adminId, desde, hasta })
+  const hayFiltrosActivos = Boolean(accion || adminId || desde || hasta)
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,8 +104,13 @@ export default async function AdminAuditoriaPage({
 
         {items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-6 py-16 text-center">
-            <p className="text-sm text-muted-foreground">
-              No hay registros que coincidan con esos filtros.
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {hayFiltrosActivos ? 'Sin coincidencias' : 'Sin actividad'}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {hayFiltrosActivos
+                ? 'Ningún registro coincide con esos filtros. Probá ampliar el rango o limpiar los filtros.'
+                : 'Cuando hagas tu primera acción admin que modifique datos, aparece acá.'}
             </p>
           </div>
         ) : (
