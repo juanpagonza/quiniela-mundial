@@ -43,7 +43,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${manrope.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
