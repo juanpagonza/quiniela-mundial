@@ -7,7 +7,15 @@ import {
   TargetIcon,
   ListChecksIcon,
   HelpCircleIcon,
+  CoinsIcon,
 } from 'lucide-react'
+
+// Hardcoded for now — if the next Mundial bumps the entry fee or shuffles
+// the prize splits, edit here and redeploy. If it starts changing every
+// edition, promote these to columns on `configuracion`.
+const ENTRADA_COLONES = 10_000
+const PREMIO_TERCERO = 10_000 // recupera la entrada
+const PREMIO_SEGUNDO = 20_000 // 2× la entrada
 
 /**
  * Public-facing rules page. Pulls scoring values from `configuracion`
@@ -25,13 +33,19 @@ export default async function ReglasPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: config } = await supabase
-    .from('configuracion')
-    .select(
-      'puntos_marcador_exacto, puntos_solo_ganador, puntos_campeon, puntos_subcampeon, puntos_goleador',
-    )
-    .eq('id', 1)
-    .single()
+  const [{ data: config }, { count: participantes }] = await Promise.all([
+    supabase
+      .from('configuracion')
+      .select(
+        'puntos_marcador_exacto, puntos_solo_ganador, puntos_campeon, puntos_subcampeon, puntos_goleador',
+      )
+      .eq('id', 1)
+      .single(),
+    // HEAD count = single round-trip, no row payload. Includes the admin
+    // because the admin also plays. If we ever want to exclude non-players,
+    // add a `participa` flag on usuarios.
+    supabase.from('usuarios').select('*', { count: 'exact', head: true }),
+  ])
 
   // Fallback if the row is missing (shouldn't happen post-Fase-2, but
   // keeps the page from crashing during early dev or after a manual
@@ -43,6 +57,13 @@ export default async function ReglasPage() {
     subcampeon: config?.puntos_subcampeon ?? 5,
     goleador: config?.puntos_goleador ?? 5,
   }
+
+  // Live prize pool math. Premio del 1º = lo que queda después de pagar
+  // al 2º y 3º. Si todavía son muy poquitos (1-3), Math.max evita mostrar
+  // un número negativo absurdo.
+  const totalParticipantes = participantes ?? 0
+  const pozoTotal = totalParticipantes * ENTRADA_COLONES
+  const premioPrimero = Math.max(0, pozoTotal - PREMIO_SEGUNDO - PREMIO_TERCERO)
 
   return (
     <div className="flex flex-col gap-8">
@@ -58,6 +79,51 @@ export default async function ReglasPage() {
           esto te queda una duda, preguntale al admin por WhatsApp.
         </p>
       </header>
+
+      {/* Premiación */}
+      <Section icon={CoinsIcon} titulo="Premiación">
+        <p className="text-sm text-foreground">
+          Entrada:{' '}
+          <strong className="font-mono tabular-nums">
+            {formatColones(ENTRADA_COLONES)}
+          </strong>{' '}
+          por participante.
+        </p>
+
+        <div className="overflow-hidden rounded-xl border border-border bg-background/60 divide-y divide-border">
+          <PremioRow
+            puesto="🥇 1º lugar"
+            detalle="El resto del pozo (lo que quede después de pagar 2º y 3º)."
+            monto={premioPrimero}
+            highlight
+          />
+          <PremioRow
+            puesto="🥈 2º lugar"
+            detalle="Equivalente a 2× la entrada."
+            monto={PREMIO_SEGUNDO}
+          />
+          <PremioRow
+            puesto="🥉 3º lugar"
+            detalle="Recupera el monto de su entrada."
+            monto={PREMIO_TERCERO}
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Cálculo en vivo:{' '}
+          <strong className="text-foreground/80">
+            {totalParticipantes} participante
+            {totalParticipantes === 1 ? '' : 's'}
+          </strong>
+          {' · '}
+          pozo total{' '}
+          <strong className="font-mono tabular-nums text-foreground/80">
+            {formatColones(pozoTotal)}
+          </strong>
+          . El premio del 1º lugar se actualiza solo a medida que más
+          gente entra a la quiniela.
+        </p>
+      </Section>
 
       {/* Puntos */}
       <Section icon={TargetIcon} titulo="Cómo se puntúa">
@@ -289,6 +355,53 @@ function Faq({ q, a }: { q: string; a: string }) {
       <p className="mt-2 ml-5 text-sm text-muted-foreground">{a}</p>
     </details>
   )
+}
+
+function PremioRow({
+  puesto,
+  detalle,
+  monto,
+  highlight = false,
+}: {
+  puesto: string
+  detalle: string
+  monto: number
+  highlight?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 px-4 py-3">
+      <span
+        className={
+          'text-sm ' +
+          (highlight ? 'font-semibold text-foreground' : 'font-medium text-foreground')
+        }
+      >
+        {puesto}
+      </span>
+      <span
+        className={
+          'row-span-2 self-center text-right font-mono tabular-nums ' +
+          (highlight ? 'text-xl font-semibold text-foreground' : 'text-base text-foreground/90')
+        }
+      >
+        {formatColones(monto)}
+      </span>
+      <span className="text-xs text-muted-foreground">{detalle}</span>
+    </div>
+  )
+}
+
+/**
+ * Format a CRC amount as "₡10 000" — Costa Rican style uses a space (not
+ * a comma or period) as thousand separator and no decimals for whole-colón
+ * amounts. Intl handles this natively with the 'es-CR' locale.
+ */
+function formatColones(amount: number): string {
+  return new Intl.NumberFormat('es-CR', {
+    style: 'currency',
+    currency: 'CRC',
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 // Link component for inline text — defaults to underlined accent style.
