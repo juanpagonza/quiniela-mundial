@@ -49,3 +49,46 @@ export async function registrarAccion(input: RegistrarAccionInput): Promise<void
     console.error('[audit] registrarAccion failed:', error, { input })
   }
 }
+
+/**
+ * Writes an audit entry only if no other entry with the same (admin, accion,
+ * entidad) exists within the throttle window. Use for read-style actions
+ * (e.g. ver_perfil_usuario) where a page reload shouldn't pile up duplicates
+ * in the log.
+ *
+ * The 5-minute default mirrors how we think about "sessions" — if the admin
+ * comes back to the same user after a coffee, we consider that a new visit
+ * worth logging. Within the window, repeated views collapse into one entry.
+ *
+ * Returns true if a new entry was actually written, false if it was throttled.
+ */
+export async function registrarAccionConThrottle(
+  input: RegistrarAccionInput,
+  throttleMinutes: number = 5,
+): Promise<boolean> {
+  const client = createServiceRoleClient()
+  const cutoff = new Date(Date.now() - throttleMinutes * 60 * 1000).toISOString()
+
+  let query = client
+    .from('log_auditoria')
+    .select('id', { head: true, count: 'exact' })
+    .eq('admin_id', input.adminId)
+    .eq('accion', input.accion)
+    .gte('fecha', cutoff)
+
+  // Match on entidad_id too if provided — that's what makes "same user" different
+  // from "same admin". If entidad_id is null we throttle globally on the action.
+  if (input.entidadId) {
+    query = query.eq('entidad_id', input.entidadId)
+  }
+
+  const { count, error: countError } = await query
+  if (countError) {
+    console.error('[audit] throttle check failed, writing anyway:', countError)
+  } else if ((count ?? 0) > 0) {
+    return false
+  }
+
+  await registrarAccion(input)
+  return true
+}

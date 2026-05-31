@@ -10,7 +10,7 @@ import type {
   FasePartido,
   EstadoPartido,
 } from '@/lib/supabase/types'
-import type { MiPrediccionEnPerfil } from '@/lib/queries/perfil'
+import type { MiPrediccionEnPerfil, PerfilUsuario } from '@/lib/queries/perfil'
 
 const FASE_ORDER: FasePartido[] = [
   'grupos',
@@ -141,7 +141,73 @@ export default async function PerfilPage() {
           )}
         </section>
       )}
+
+      {/* Transparency: when did the admin look at / edit my stuff? */}
+      <AccesosAdminSection accesos={perfil.accesos_admin} />
     </div>
+  )
+}
+
+function AccesosAdminSection({
+  accesos,
+}: {
+  accesos: PerfilUsuario['accesos_admin']
+}) {
+  return (
+    <section className="flex flex-col gap-3">
+      <div>
+        <h2 className="font-display text-2xl font-medium text-foreground">
+          Accesos del admin a tu cuenta
+        </h2>
+        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+          Por transparencia, mostramos cuándo el admin miró o editó tus
+          predicciones. Las vistas se agrupan cada 5 minutos para no
+          inflar la lista cuando el admin navega entre tus partidos.
+        </p>
+      </div>
+
+      {accesos.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-6 py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Sin registros — el admin nunca accedió a tu cuenta.
+          </p>
+        </div>
+      ) : (
+        <ul className="overflow-hidden rounded-2xl border border-border bg-card divide-y divide-border">
+          {accesos.map((a) => (
+            <li key={a.id} className="flex items-start gap-3 px-4 py-3">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'mt-1 inline-block size-2 shrink-0 rounded-full',
+                  a.tipo === 'edicion' ? 'bg-foreground' : 'bg-muted-foreground/50',
+                )}
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <p className="text-sm text-foreground">
+                  <span className="font-medium">{a.admin_nombre}</span>{' '}
+                  <span className="text-muted-foreground">— {a.detalle}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {new Date(a.fecha).toLocaleString('es', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                  {a.tipo === 'edicion' && (
+                    <>
+                      <span className="mx-1.5 text-muted-foreground/40">·</span>
+                      <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-foreground/80">
+                        Edición
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

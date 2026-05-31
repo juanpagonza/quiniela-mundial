@@ -566,6 +566,7 @@ export type Database = {
         | "crear_pregunta_bonus"
         | "editar_pregunta_bonus"
         | "eliminar_pregunta_bonus"
+        | "ver_perfil_usuario"
       estado_partido: "programado" | "en_curso" | "finalizado" | "suspendido"
       fase_partido:
         | "grupos"
@@ -715,6 +716,7 @@ export const Constants = {
         "crear_pregunta_bonus",
         "editar_pregunta_bonus",
         "eliminar_pregunta_bonus",
+        "ver_perfil_usuario",
       ],
       estado_partido: ["programado", "en_curso", "finalizado", "suspendido"],
       fase_partido: [

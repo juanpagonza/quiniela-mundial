@@ -39,6 +39,18 @@ export interface PerfilUsuario {
   predicciones: MiPrediccionEnPerfil[]
   torneo: MiPrediccionTorneo | null
   mundial_iniciado: boolean
+  accesos_admin: AccesoAdmin[]
+}
+
+/** A single entry in the user's "accesos del admin" timeline. */
+export interface AccesoAdmin {
+  id: string
+  fecha: string
+  admin_nombre: string
+  /** 'vista' = just looked, 'edicion' = changed something */
+  tipo: 'vista' | 'edicion'
+  /** Brief human-readable description of what was touched. */
+  detalle: string
 }
 
 /**
@@ -61,6 +73,9 @@ export async function obtenerPerfilUsuario(
     misPredicciones,
     miTorneo,
     iniciado,
+    accesosVistas,
+    accesosEdicionesPartido,
+    accesosEdicionesBonus,
   ] = await Promise.all([
     supabase
       .from('leaderboard')
@@ -90,12 +105,41 @@ export async function obtenerPerfilUsuario(
       .eq('usuario_id', userId)
       .maybeSingle(),
     supabase.rpc('mundial_iniciado'),
+    // Accesos del admin: tres fuentes que después juntamos en memoria.
+    // (1) Vistas explícitas: accion='ver_perfil_usuario' con entidad_id = userId
+    supabase
+      .from('log_auditoria')
+      .select(`id, fecha, accion, admin:usuarios!admin_id (nombre)`)
+      .eq('accion', 'ver_perfil_usuario')
+      .eq('entidad_id', userId)
+      .order('fecha', { ascending: false })
+      .limit(50),
+    // (2) Ediciones de prediccion_partido del user — usamos el operador
+    //     JSONB path filter de PostgREST: valor_nuevo->>usuario_id = userId
+    supabase
+      .from('log_auditoria')
+      .select(`id, fecha, accion, admin:usuarios!admin_id (nombre)`)
+      .eq('accion', 'editar_prediccion_partido')
+      .filter('valor_nuevo->>usuario_id', 'eq', userId)
+      .order('fecha', { ascending: false })
+      .limit(50),
+    // (3) Ediciones de prediccion_bonus del user
+    supabase
+      .from('log_auditoria')
+      .select(`id, fecha, accion, admin:usuarios!admin_id (nombre)`)
+      .eq('accion', 'editar_prediccion_bonus')
+      .filter('valor_nuevo->>usuario_id', 'eq', userId)
+      .order('fecha', { ascending: false })
+      .limit(50),
   ])
 
   if (leaderboardRow.error) throw leaderboardRow.error
   if (misPredicciones.error) throw misPredicciones.error
   if (miTorneo.error) throw miTorneo.error
   if (iniciado.error) throw iniciado.error
+  if (accesosVistas.error) throw accesosVistas.error
+  if (accesosEdicionesPartido.error) throw accesosEdicionesPartido.error
+  if (accesosEdicionesBonus.error) throw accesosEdicionesBonus.error
 
   const predicciones: MiPrediccionEnPerfil[] = (misPredicciones.data ?? [])
     .map((row) => {
@@ -144,6 +188,44 @@ export async function obtenerPerfilUsuario(
 
   const aciertos = predicciones.filter((p) => p.puntos_obtenidos > 0).length
 
+  // Merge the 3 access sources, sort by date desc, keep the top 30.
+  // Both edition rows carry the same shape from PostgREST — the join brings
+  // `admin: { nombre }` either as an object or null if the FK is broken
+  // (shouldn't happen but be defensive).
+  type RawAccesoRow = {
+    id: string
+    fecha: string
+    accion: 'ver_perfil_usuario' | 'editar_prediccion_partido' | 'editar_prediccion_bonus'
+    admin: { nombre: string } | { nombre: string }[] | null
+  }
+  const mapAcceso = (
+    row: RawAccesoRow,
+    tipo: 'vista' | 'edicion',
+    detalle: string,
+  ): AccesoAdmin => {
+    const adminObj = Array.isArray(row.admin) ? row.admin[0] : row.admin
+    return {
+      id: row.id,
+      fecha: row.fecha,
+      admin_nombre: adminObj?.nombre ?? 'Admin',
+      tipo,
+      detalle,
+    }
+  }
+  const accesos_admin: AccesoAdmin[] = [
+    ...(accesosVistas.data ?? []).map((r) =>
+      mapAcceso(r as RawAccesoRow, 'vista', 'Vio tus predicciones'),
+    ),
+    ...(accesosEdicionesPartido.data ?? []).map((r) =>
+      mapAcceso(r as RawAccesoRow, 'edicion', 'Editó una predicción de partido'),
+    ),
+    ...(accesosEdicionesBonus.data ?? []).map((r) =>
+      mapAcceso(r as RawAccesoRow, 'edicion', 'Editó una respuesta bonus'),
+    ),
+  ]
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .slice(0, 30)
+
   return {
     puntos_totales: leaderboardRow.data?.puntos_totales ?? 0,
     marcadores_exactos: leaderboardRow.data?.marcadores_exactos ?? 0,
@@ -152,5 +234,6 @@ export async function obtenerPerfilUsuario(
     predicciones,
     torneo,
     mundial_iniciado: Boolean(iniciado.data),
+    accesos_admin,
   }
 }

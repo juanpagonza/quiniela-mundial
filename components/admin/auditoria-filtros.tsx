@@ -20,6 +20,7 @@ const ACCION_LABELS: Record<AccionAuditoria, string> = {
   crear_pregunta_bonus: 'Crear pregunta bonus',
   editar_pregunta_bonus: 'Editar pregunta bonus',
   eliminar_pregunta_bonus: 'Eliminar pregunta bonus',
+  ver_perfil_usuario: 'Ver perfil de usuario',
 }
 
 const ACCIONES = Object.keys(ACCION_LABELS) as AccionAuditoria[]

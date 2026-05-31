@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronLeftIcon } from 'lucide-react'
 import { requireAdmin } from '@/lib/auth/admin'
+import { registrarAccionConThrottle } from '@/lib/audit'
 import {
   obtenerPartidosParaPredicciones,
   obtenerPrediccionAdmin,
@@ -30,7 +31,7 @@ export default async function AdminPrediccionesPage({
     partido?: string
   }>
 }) {
-  const { supabase } = await requireAdmin()
+  const { supabase, user } = await requireAdmin()
   const params = await searchParams
   const usuarioId = params.usuario?.trim() || null
   const partidoId = params.partido?.trim() || null
@@ -46,6 +47,21 @@ export default async function AdminPrediccionesPage({
       : null
 
   const usuarioElegido = usuarios.find((u) => u.id === usuarioId) ?? null
+
+  // Transparency log: record that the admin viewed this user's predictions.
+  // Throttled to one entry per (admin, user) every 5 minutes so reloads /
+  // switching between partidos of the same user don't pile up the log.
+  // The user sees these entries in their /perfil under "Accesos del admin".
+  // Skip when the admin is viewing their own profile — that's not surveillance.
+  if (usuarioId && data && usuarioId !== user.id) {
+    await registrarAccionConThrottle({
+      adminId: user.id,
+      accion: 'ver_perfil_usuario',
+      entidadTipo: 'usuario',
+      entidadId: usuarioId,
+      valorNuevo: null,
+    })
+  }
 
   return (
     <div className="flex flex-col gap-6">
