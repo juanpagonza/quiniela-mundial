@@ -43,7 +43,7 @@ REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated;
 -- working as a row filter; column-level grants are evaluated separately.
 
 REVOKE SELECT ON public.usuarios FROM anon, authenticated;
-GRANT SELECT (id, nombre, foto_url, es_admin, created_at, updated_at)
+GRANT SELECT (id, nombre, foto_url, es_admin, created_at)
   ON public.usuarios TO authenticated;
 
 -- =====================================================================
