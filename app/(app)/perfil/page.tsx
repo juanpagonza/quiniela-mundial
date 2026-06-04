@@ -37,9 +37,12 @@ export default async function PerfilPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Email was previously fetched here but never rendered. Post migration
+  // 00027 the column isn't accessible to the authenticated role anyway —
+  // if we ever need to show it, pull from `user.email` (session).
   const { data: usuario } = await supabase
     .from('usuarios')
-    .select('nombre, foto_url, email')
+    .select('nombre, foto_url')
     .eq('id', user.id)
     .single()
 

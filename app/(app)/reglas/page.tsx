@@ -44,7 +44,9 @@ export default async function ReglasPage() {
     // HEAD count = single round-trip, no row payload. Includes the admin
     // because the admin also plays. If we ever want to exclude non-players,
     // add a `participa` flag on usuarios.
-    supabase.from('usuarios').select('*', { count: 'exact', head: true }),
+    // Use a specific column rather than '*' because the authenticated role
+    // doesn't have SELECT on usuarios.email anymore (migration 00027).
+    supabase.from('usuarios').select('id', { count: 'exact', head: true }),
   ])
 
   // Fallback if the row is missing (shouldn't happen post-Fase-2, but

@@ -48,10 +48,14 @@ export async function obtenerAdminStats(supabase: Client): Promise<AdminStats> {
     preguntasBonus,
     proximoPartidoData,
   ] = await Promise.all([
-    supabase.from('usuarios').select('*', { count: 'exact', head: true }),
+    // After migration 00027 we can no longer SELECT * on usuarios from the
+    // authenticated role (the email column is REVOKEd). For head-counts we
+    // pin to a specific allowed column to keep PostgREST's permission check
+    // happy. Pattern repeats below for the admin count.
+    supabase.from('usuarios').select('id', { count: 'exact', head: true }),
     supabase
       .from('usuarios')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('es_admin', true),
     supabase.from('partidos').select('*', { count: 'exact', head: true }),
     supabase
