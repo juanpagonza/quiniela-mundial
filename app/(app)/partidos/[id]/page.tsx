@@ -2,9 +2,13 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { obtenerPartidoDetalle } from '@/lib/queries/partido-detalle'
-import { obtenerPreguntasBonusPartido } from '@/lib/queries/preguntas-bonus'
+import {
+  obtenerPrediccionesBonusGrupo,
+  obtenerPreguntasBonusPartido,
+} from '@/lib/queries/preguntas-bonus'
 import { BanderaEquipo } from '@/components/bandera-equipo'
 import { PreguntasBonus } from '@/components/preguntas-bonus'
+import { PrediccionesBonusGrupo } from '@/components/predicciones-bonus-grupo'
 import { formatearKickoff } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { ChevronLeftIcon } from 'lucide-react'
@@ -42,12 +46,16 @@ export default async function PartidoDetallePage({
   const yaEmpezo =
     partido.estado === 'en_curso' || partido.estado === 'finalizado' || kickoffPasado
 
-  // Bonus questions only matter pre-kickoff (the answer form). Post-kickoff
-  // display of bonus answers (with respuesta_correcta + per-user puntos) is
-  // a future enhancement — for now we just hide them.
+  // Pre-kickoff: load the user's own answer form (their respuestas + form).
+  // Post-kickoff: load every participant's answers so we can render the
+  // group reveal. RLS in 00013_rls_bonus.sql only lets non-owners read
+  // post-kickoff, which matches the gating here.
   const preguntasBonus = yaEmpezo
     ? []
     : await obtenerPreguntasBonusPartido(supabase, id, user.id)
+  const prediccionesBonusGrupo = yaEmpezo
+    ? await obtenerPrediccionesBonusGrupo(supabase, id)
+    : []
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,10 +111,16 @@ export default async function PartidoDetallePage({
       </div>
 
       {yaEmpezo ? (
-        <PrediccionesGrupo
-          predicciones={partido.todas_predicciones}
-          miUserId={user.id}
-        />
+        <>
+          <PrediccionesGrupo
+            predicciones={partido.todas_predicciones}
+            miUserId={user.id}
+          />
+          <PrediccionesBonusGrupo
+            preguntas={prediccionesBonusGrupo}
+            miUserId={user.id}
+          />
+        </>
       ) : (
         <>
           <FormularioPrediccion
