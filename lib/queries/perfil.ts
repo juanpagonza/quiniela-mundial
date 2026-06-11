@@ -76,6 +76,7 @@ export async function obtenerPerfilUsuario(
     accesosVistas,
     accesosEdicionesPartido,
     accesosEdicionesBonus,
+    accesosEdicionesTorneo,
   ] = await Promise.all([
     supabase
       .from('leaderboard')
@@ -131,6 +132,16 @@ export async function obtenerPerfilUsuario(
       .filter('valor_nuevo->>usuario_id', 'eq', userId)
       .order('fecha', { ascending: false })
       .limit(50),
+    // (4) Ediciones de prediccion_torneo del user — entidad_id = userId
+    //     porque predicciones_torneo tiene UNIQUE(usuario_id) y esa es la
+    //     convención que elige el action.
+    supabase
+      .from('log_auditoria')
+      .select(`id, fecha, accion, admin:usuarios!admin_id (nombre)`)
+      .eq('accion', 'editar_prediccion_torneo')
+      .eq('entidad_id', userId)
+      .order('fecha', { ascending: false })
+      .limit(50),
   ])
 
   if (leaderboardRow.error) throw leaderboardRow.error
@@ -140,6 +151,7 @@ export async function obtenerPerfilUsuario(
   if (accesosVistas.error) throw accesosVistas.error
   if (accesosEdicionesPartido.error) throw accesosEdicionesPartido.error
   if (accesosEdicionesBonus.error) throw accesosEdicionesBonus.error
+  if (accesosEdicionesTorneo.error) throw accesosEdicionesTorneo.error
 
   const predicciones: MiPrediccionEnPerfil[] = (misPredicciones.data ?? [])
     .map((row) => {
@@ -195,7 +207,11 @@ export async function obtenerPerfilUsuario(
   type RawAccesoRow = {
     id: string
     fecha: string
-    accion: 'ver_perfil_usuario' | 'editar_prediccion_partido' | 'editar_prediccion_bonus'
+    accion:
+      | 'ver_perfil_usuario'
+      | 'editar_prediccion_partido'
+      | 'editar_prediccion_bonus'
+      | 'editar_prediccion_torneo'
     admin: { nombre: string } | { nombre: string }[] | null
   }
   const mapAcceso = (
@@ -221,6 +237,9 @@ export async function obtenerPerfilUsuario(
     ),
     ...(accesosEdicionesBonus.data ?? []).map((r) =>
       mapAcceso(r as RawAccesoRow, 'edicion', 'Editó una respuesta bonus'),
+    ),
+    ...(accesosEdicionesTorneo.data ?? []).map((r) =>
+      mapAcceso(r as RawAccesoRow, 'edicion', 'Editó tu predicción del Mundial'),
     ),
   ]
     .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())

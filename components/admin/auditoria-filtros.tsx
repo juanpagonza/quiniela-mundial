@@ -13,6 +13,7 @@ import type { AdminMini } from '@/lib/queries/auditoria'
 const ACCION_LABELS: Record<AccionAuditoria, string> = {
   editar_prediccion_partido: 'Editar predicción partido',
   editar_prediccion_bonus: 'Editar predicción bonus',
+  editar_prediccion_torneo: 'Editar predicción torneo',
   ajuste_puntos_manual: 'Ajuste manual',
   editar_resultado_partido: 'Editar resultado',
   editar_config: 'Editar configuración',

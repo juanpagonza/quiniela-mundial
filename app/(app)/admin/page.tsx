@@ -9,6 +9,7 @@ import {
   ClipboardListIcon,
   SettingsIcon,
   ShieldIcon,
+  TrophyIcon,
   UsersIcon,
 } from 'lucide-react'
 import type { FasePartido } from '@/lib/supabase/types'
@@ -134,6 +135,12 @@ export default async function AdminPage() {
             icon={ClipboardListIcon}
             titulo="Predicciones"
             detalle="Editar predicciones de cualquier participante."
+          />
+          <QuickLink
+            href="/admin/torneo"
+            icon={TrophyIcon}
+            titulo="Predicciones de torneo"
+            detalle="Editar campeón, subcampeón y goleador de un participante."
           />
           <QuickLink
             href="/admin/auditoria"
