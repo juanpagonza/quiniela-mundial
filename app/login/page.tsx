@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
 function LoginContent() {
-  const supabase = createClient()
   const searchParams = useSearchParams()
   const queryError = searchParams.get('error')
   const rawNext = searchParams.get('next') ?? '/'
@@ -18,6 +17,9 @@ function LoginContent() {
   const handleGoogleSignIn = async () => {
     setLoading(true)
     setClientError(null)
+    // Create the Supabase client lazily so prerendering (which runs in a
+    // Node environment without NEXT_PUBLIC_* available) never instantiates it.
+    const supabase = createClient()
     const callbackUrl = new URL('/auth/callback', window.location.origin)
     if (next !== '/') callbackUrl.searchParams.set('next', next)
 
