@@ -200,7 +200,7 @@ export async function obtenerPerfilUsuario(
 
   const aciertos = predicciones.filter((p) => p.puntos_obtenidos > 0).length
 
-  // Merge the 3 access sources, sort by date desc, keep the top 30.
+  // Merge the 4 access sources, sort by date desc, keep the top 30.
   // Both edition rows carry the same shape from PostgREST — the join brings
   // `admin: { nombre }` either as an object or null if the FK is broken
   // (shouldn't happen but be defensive).
