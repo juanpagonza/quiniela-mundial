@@ -6,8 +6,10 @@ import {
   obtenerLeaderboard,
   obtenerProximoPartido,
 } from '@/lib/queries/dashboard'
+import { obtenerBonusPendientes } from '@/lib/queries/preguntas-bonus'
 import { ProximoPartido } from '@/components/proximo-partido'
 import { MiniLeaderboard } from '@/components/mini-leaderboard'
+import { RecordatorioBonusModal } from '@/components/recordatorio-bonus-modal'
 import { ArrowRightIcon, TrophyIcon } from 'lucide-react'
 
 export default async function HomePage() {
@@ -25,14 +27,19 @@ export default async function HomePage() {
 
   const primerNombre = (usuario?.nombre ?? '').split(' ')[0]
 
-  const [proximo, leaderboard, pendientes] = await Promise.all([
+  const [proximo, leaderboard, pendientes, bonusPendientes] = await Promise.all([
     obtenerProximoPartido(supabase, user.id),
     obtenerLeaderboard(supabase, 5),
     contarPrediccionesPendientes(supabase, user.id),
+    obtenerBonusPendientes(supabase, user.id),
   ])
 
   return (
     <div className="flex flex-col gap-6">
+      {bonusPendientes.length > 0 && (
+        <RecordatorioBonusModal bonusPendientes={bonusPendientes} />
+      )}
+
       <div className="flex flex-col gap-1">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Hola{primerNombre ? `, ${primerNombre}` : ''}

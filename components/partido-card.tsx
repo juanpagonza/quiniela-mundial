@@ -168,6 +168,26 @@ export function PartidoCard({ partido }: { partido: PartidoConPrediccion }) {
       <div className="mt-3 border-t border-border/60 pt-2.5">
         <PrediccionFooter partido={partido} />
       </div>
+
+      {partido.count_preguntas_bonus > 0 && (
+        <div className="mt-2.5">
+          <BonusBadge count={partido.count_preguntas_bonus} />
+        </div>
+      )}
     </Link>
+  )
+}
+
+export function BonusBadge({ count }: { count: number }) {
+  const label =
+    count === 1 ? 'Incluye pregunta bonus' : `Incluye ${count} preguntas bonus`
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
+      <span
+        aria-hidden="true"
+        className="size-2 rounded-full bg-emerald-500"
+      />
+      {label}
+    </span>
   )
 }

@@ -13,6 +13,7 @@ export interface ProximoPartido {
   equipo_local: EquipoMini
   equipo_visitante: EquipoMini
   mi_prediccion: PrediccionMini | null
+  count_preguntas_bonus: number
 }
 
 export interface LeaderboardRow {
@@ -49,14 +50,21 @@ export async function obtenerProximoPartido(
   if (partidoError) throw partidoError
   if (!partido) return null
 
-  const { data: pred, error: predError } = await supabase
-    .from('predicciones_partido')
-    .select('marcador_local, marcador_visitante, puntos_obtenidos')
-    .eq('usuario_id', userId)
-    .eq('partido_id', partido.id)
-    .maybeSingle()
+  const [predResult, bonusResult] = await Promise.all([
+    supabase
+      .from('predicciones_partido')
+      .select('marcador_local, marcador_visitante, puntos_obtenidos')
+      .eq('usuario_id', userId)
+      .eq('partido_id', partido.id)
+      .maybeSingle(),
+    supabase
+      .from('preguntas_bonus')
+      .select('id', { count: 'exact', head: true })
+      .eq('partido_id', partido.id),
+  ])
 
-  if (predError) throw predError
+  if (predResult.error) throw predResult.error
+  if (bonusResult.error) throw bonusResult.error
 
   return {
     id: partido.id,
@@ -66,7 +74,8 @@ export async function obtenerProximoPartido(
     habilitado_para_predecir: partido.habilitado_para_predecir,
     equipo_local: partido.equipo_local as unknown as EquipoMini,
     equipo_visitante: partido.equipo_visitante as unknown as EquipoMini,
-    mi_prediccion: pred,
+    mi_prediccion: predResult.data,
+    count_preguntas_bonus: bonusResult.count ?? 0,
   }
 }
 

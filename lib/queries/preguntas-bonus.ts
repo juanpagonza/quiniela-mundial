@@ -39,6 +39,17 @@ export interface PreguntaBonusConPredicciones {
   predicciones: PrediccionBonusDeUsuario[]
 }
 
+export interface BonusPendiente {
+  pregunta_bonus_id: string
+  partido_id: string
+  enunciado: string
+  equipo_local_nombre: string
+  equipo_visitante_nombre: string
+  equipo_local_codigo_pais: string
+  equipo_visitante_codigo_pais: string
+  fecha_hora_kickoff: string
+}
+
 /**
  * Returns every bonus question for the partido, with the caller's saved
  * answer merged in (null if they haven't answered). Order is creation
@@ -167,4 +178,112 @@ export async function obtenerPrediccionesBonusGrupo(
       predicciones: preds,
     }
   })
+}
+
+interface BonusPendienteRaw {
+  id: string
+  enunciado: string
+  partido: {
+    id: string
+    fecha_hora_kickoff: string
+    habilitado_para_predecir: boolean
+    equipo_local: { nombre: string; codigo_pais: string } | null
+    equipo_visitante: { nombre: string; codigo_pais: string } | null
+  } | null
+}
+
+/**
+ * Pure filter/sort over the joined `preguntas_bonus + partido` rows:
+ * drops anything already answered, anything whose partido is locked
+ * (kickoff cutoff) or disabled, anything missing the embedded partido,
+ * then sorts by kickoff ASC. Exported so unit tests can exercise the
+ * branching logic without mocking Supabase.
+ *
+ * `cutoff` is the ISO string used in the time comparison — pass
+ * `new Date(Date.now() + 60_000).toISOString()` to match the RLS rule
+ * (kickoff > now() + 1 minute).
+ */
+export function filtrarBonusPendientes(
+  preguntas: BonusPendienteRaw[],
+  preguntasYaRespondidas: Iterable<string>,
+  cutoff: string,
+): BonusPendiente[] {
+  const respondidas = new Set(preguntasYaRespondidas)
+
+  const pendientes: BonusPendiente[] = []
+  for (const pregunta of preguntas) {
+    if (respondidas.has(pregunta.id)) continue
+
+    const partido = pregunta.partido
+    if (!partido) continue
+    if (!partido.habilitado_para_predecir) continue
+    if (partido.fecha_hora_kickoff <= cutoff) continue
+
+    pendientes.push({
+      pregunta_bonus_id: pregunta.id,
+      partido_id: partido.id,
+      enunciado: pregunta.enunciado,
+      equipo_local_nombre: partido.equipo_local?.nombre ?? '',
+      equipo_visitante_nombre: partido.equipo_visitante?.nombre ?? '',
+      equipo_local_codigo_pais: partido.equipo_local?.codigo_pais ?? '',
+      equipo_visitante_codigo_pais: partido.equipo_visitante?.codigo_pais ?? '',
+      fecha_hora_kickoff: partido.fecha_hora_kickoff,
+    })
+  }
+
+  pendientes.sort((a, b) =>
+    a.fecha_hora_kickoff < b.fecha_hora_kickoff
+      ? -1
+      : a.fecha_hora_kickoff > b.fecha_hora_kickoff
+        ? 1
+        : 0,
+  )
+
+  return pendientes
+}
+
+/**
+ * Returns bonus questions the user hasn't answered yet, scoped to partidos
+ * that are still open for predictions. "Open" matches the RLS rule:
+ * kickoff > now() + 1 minute AND habilitado_para_predecir = true.
+ *
+ * Strategy: fetch every bonus question joined with its partido, then fetch
+ * the user's predicciones_bonus IDs and exclude them JS-side. Sorted by
+ * kickoff ASC so the most urgent appear first. The filter/sort is split
+ * out as `filtrarBonusPendientes` so tests don't need to mock Supabase.
+ */
+export async function obtenerBonusPendientes(
+  supabase: Client,
+  userId: string,
+): Promise<BonusPendiente[]> {
+  // The RLS time-lock uses now() + 1 minute, so we use the same client-side
+  // cutoff to avoid showing a question the server would refuse to upsert.
+  const cutoff = new Date(Date.now() + 60_000).toISOString()
+
+  const [preguntasResult, prediccionesResult] = await Promise.all([
+    supabase
+      .from('preguntas_bonus')
+      .select(
+        `id, enunciado,
+         partido:partidos!partido_id (
+           id, fecha_hora_kickoff, habilitado_para_predecir,
+           equipo_local:equipos!equipo_local_id (nombre, codigo_pais),
+           equipo_visitante:equipos!equipo_visitante_id (nombre, codigo_pais)
+         )`,
+      ),
+    supabase
+      .from('predicciones_bonus')
+      .select('pregunta_bonus_id')
+      .eq('usuario_id', userId),
+  ])
+
+  if (preguntasResult.error) throw preguntasResult.error
+  if (prediccionesResult.error) throw prediccionesResult.error
+
+  const preguntas = (preguntasResult.data ?? []) as unknown as BonusPendienteRaw[]
+  const yaRespondidas = (prediccionesResult.data ?? []).map(
+    (p) => p.pregunta_bonus_id,
+  )
+
+  return filtrarBonusPendientes(preguntas, yaRespondidas, cutoff)
 }

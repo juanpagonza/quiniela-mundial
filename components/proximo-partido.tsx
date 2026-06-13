@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BanderaEquipo } from '@/components/bandera-equipo'
+import { BonusBadge } from '@/components/partido-card'
 import { formatearKickoff, tiempoHastaKickoff } from '@/lib/dates'
 import { ArrowRightIcon } from 'lucide-react'
 import type { FasePartido } from '@/lib/supabase/types'
@@ -34,6 +35,12 @@ export function ProximoPartido({ partido }: { partido: ProximoPartidoData }) {
       <p className="mt-1 text-xs text-muted-foreground">
         {formatearKickoff(partido.fecha_hora_kickoff)}
       </p>
+
+      {partido.count_preguntas_bonus > 0 && (
+        <div className="mt-3">
+          <BonusBadge count={partido.count_preguntas_bonus} />
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <div className="flex flex-col items-center gap-2 text-center">
