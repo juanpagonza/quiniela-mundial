@@ -74,6 +74,18 @@ const TLA_TO_ISO2: Record<string, string> = {
   IRN: 'ir',
   IRQ: 'iq',
   PHI: 'ph',
+  // Added after observing wrong fallbacks in the live fixture (the bare
+  // first-two-chars-of-TLA gave 'au' for Austria — colliding with Australia,
+  // 'co' for Congo DR — colliding with Colombia, etc.). Keep these in sync
+  // with the equipos.codigo_pais data fix.
+  AUT: 'at',
+  BIH: 'ba',
+  CPV: 'cv',
+  COD: 'cd',
+  CUW: 'cw',
+  HAI: 'ht',
+  SWE: 'se',
+  TUR: 'tr',
 }
 
 function tlaToIso2(tla: string | null): string {
