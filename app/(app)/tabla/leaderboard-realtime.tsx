@@ -28,7 +28,9 @@ export function LeaderboardRealtime({
     const refetch = async () => {
       const { data, error } = await supabase
         .from('leaderboard')
-        .select('usuario_id, nombre, foto_url, puntos_totales, marcadores_exactos')
+        .select(
+          'usuario_id, nombre, foto_url, puntos_totales, marcadores_exactos, puntos_bonus',
+        )
       if (error) {
         console.error('[tabla] refetch failed:', error)
         return
@@ -40,6 +42,7 @@ export function LeaderboardRealtime({
           foto_url: r.foto_url,
           puntos: r.puntos_totales ?? 0,
           marcadores_exactos: r.marcadores_exactos ?? 0,
+          puntos_bonus: r.puntos_bonus ?? 0,
         })),
       )
       setActualizadoEn(new Date())
@@ -126,14 +129,28 @@ function LeaderboardTable({
     )
   }
 
+  // Grid: [#] [name flex] [Exactos] [Bonus] [Puntos]. Tighter widths on
+  // mobile so the name column keeps usable width on a 375px viewport.
+  const grid =
+    'grid grid-cols-[1.5rem_1fr_2.25rem_2.25rem_3rem] sm:grid-cols-[2rem_1fr_4rem_4rem_4.5rem] items-center gap-3'
+
   return (
     <ol className="overflow-hidden rounded-2xl border border-border bg-card">
-      <li className="grid grid-cols-[1.75rem_1fr_2.75rem_3.5rem] sm:grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      <li
+        className={cn(
+          grid,
+          'border-b border-border bg-muted/40 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground',
+        )}
+      >
         <span>#</span>
         <span>Participante</span>
         <span className="text-right" aria-label="Marcadores exactos">
           <span className="sm:hidden">Ex.</span>
           <span className="hidden sm:inline">Exactos</span>
+        </span>
+        <span className="text-right" aria-label="Puntos por preguntas bonus">
+          <span className="sm:hidden">B.</span>
+          <span className="hidden sm:inline">Bonus</span>
         </span>
         <span className="text-right">Puntos</span>
       </li>
@@ -143,7 +160,8 @@ function LeaderboardTable({
           <li
             key={row.usuario_id}
             className={cn(
-              'grid grid-cols-[1.75rem_1fr_2.75rem_3.5rem] sm:grid-cols-[2rem_1fr_4rem_4.5rem] items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0',
+              grid,
+              'border-b border-border/60 px-4 py-3 last:border-b-0',
               mia && 'bg-accent/40',
             )}
           >
@@ -167,6 +185,9 @@ function LeaderboardTable({
             </span>
             <span className="text-right font-mono text-sm tabular-nums text-foreground">
               {row.marcadores_exactos}
+            </span>
+            <span className="text-right font-mono text-sm tabular-nums text-foreground">
+              {row.puntos_bonus}
             </span>
             <span className="text-right font-mono text-base font-semibold tabular-nums text-foreground">
               {row.puntos}

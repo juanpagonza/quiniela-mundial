@@ -522,6 +522,7 @@ export type Database = {
           foto_url: string | null
           marcadores_exactos: number | null
           nombre: string | null
+          puntos_bonus: number | null
           puntos_totales: number | null
           usuario_id: string | null
         }
@@ -529,6 +530,7 @@ export type Database = {
           foto_url?: string | null
           marcadores_exactos?: never
           nombre?: string | null
+          puntos_bonus?: never
           puntos_totales?: never
           usuario_id?: string | null
         }
@@ -536,6 +538,7 @@ export type Database = {
           foto_url?: string | null
           marcadores_exactos?: never
           nombre?: string | null
+          puntos_bonus?: never
           puntos_totales?: never
           usuario_id?: string | null
         }

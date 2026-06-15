@@ -22,6 +22,7 @@ export interface LeaderboardRow {
   foto_url: string | null
   puntos: number
   marcadores_exactos: number
+  puntos_bonus: number
 }
 
 /**
@@ -96,7 +97,9 @@ export async function obtenerLeaderboard(
 ): Promise<LeaderboardRow[]> {
   const query = supabase
     .from('leaderboard')
-    .select('usuario_id, nombre, foto_url, puntos_totales, marcadores_exactos')
+    .select(
+      'usuario_id, nombre, foto_url, puntos_totales, marcadores_exactos, puntos_bonus',
+    )
   const { data, error } = limit ? await query.limit(limit) : await query
 
   if (error) throw error
@@ -107,6 +110,7 @@ export async function obtenerLeaderboard(
     foto_url: r.foto_url,
     puntos: r.puntos_totales ?? 0,
     marcadores_exactos: r.marcadores_exactos ?? 0,
+    puntos_bonus: r.puntos_bonus ?? 0,
   }))
 }
 
