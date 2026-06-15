@@ -40,11 +40,31 @@ export function PartidosList({ partidos }: PartidosListProps) {
     [fasesPresentes],
   )
 
-  const visibles = useMemo(
-    () =>
-      filtro === 'todos' ? partidos : partidos.filter((p) => p.fase === filtro),
-    [filtro, partidos],
-  )
+  // Two-group order: non-finalizado partidos (programados / en curso) go up
+  // top sorted ASC by kickoff (closest upcoming first); finalizados drop to
+  // the bottom sorted DESC (most recently played first, since older matches
+  // matter less to most readers). Filtering by fase is applied first so the
+  // sort happens within the visible subset.
+  const visibles = useMemo(() => {
+    const filtrados =
+      filtro === 'todos' ? partidos : partidos.filter((p) => p.fase === filtro)
+
+    const pendientes: PartidoConPrediccion[] = []
+    const finalizados: PartidoConPrediccion[] = []
+    for (const p of filtrados) {
+      if (p.estado === 'finalizado') finalizados.push(p)
+      else pendientes.push(p)
+    }
+
+    pendientes.sort((a, b) =>
+      a.fecha_hora_kickoff.localeCompare(b.fecha_hora_kickoff),
+    )
+    finalizados.sort((a, b) =>
+      b.fecha_hora_kickoff.localeCompare(a.fecha_hora_kickoff),
+    )
+
+    return [...pendientes, ...finalizados]
+  }, [filtro, partidos])
 
   if (partidos.length === 0) {
     return (
