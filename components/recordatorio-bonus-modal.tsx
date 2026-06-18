@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { BanderaEquipo } from '@/components/bandera-equipo'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,8 +14,6 @@ import {
 import { formatearKickoff } from '@/lib/dates'
 import type { BonusPendiente } from '@/lib/queries/preguntas-bonus'
 
-const STORAGE_KEY = 'recordatorio_bonus_visto'
-
 interface RecordatorioBonusModalProps {
   bonusPendientes: BonusPendiente[]
 }
@@ -23,41 +21,18 @@ interface RecordatorioBonusModalProps {
 export function RecordatorioBonusModal({
   bonusPendientes,
 }: RecordatorioBonusModalProps) {
-  const [open, setOpen] = useState(false)
+  // Opens on every mount so a user returning to /home gets reminded again.
+  // The home page is a server component, so navigating away and back triggers
+  // a fresh mount of this client component — that's exactly the behavior we
+  // want. Dismissal is only in-memory state for the current page lifetime.
+  const [open, setOpen] = useState(true)
 
-  // Auto-open on mount if the user hasn't dismissed it this session.
-  // sessionStorage lives on window so we check on the client after hydration.
-  useEffect(() => {
-    if (bonusPendientes.length === 0) return
-    if (typeof window === 'undefined') return
-    try {
-      if (window.sessionStorage.getItem(STORAGE_KEY) !== '1') {
-        setOpen(true)
-      }
-    } catch {
-      // Some browsers (e.g. private mode quotas) throw on sessionStorage access.
-      // Better to skip the reminder than to crash the home page.
-    }
-  }, [bonusPendientes.length])
-
-  const dismiss = () => {
-    try {
-      window.sessionStorage.setItem(STORAGE_KEY, '1')
-    } catch {
-      // ignore — see note above
-    }
-    setOpen(false)
-  }
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) dismiss()
-    else setOpen(true)
-  }
+  const dismiss = () => setOpen(false)
 
   if (bonusPendientes.length === 0) return null
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-medium tracking-tight">
