@@ -53,11 +53,30 @@ export function AdminPartidosList({
     [fasesPresentes],
   )
 
-  const visibles = useMemo(
-    () =>
-      filtro === 'todos' ? partidos : partidos.filter((p) => p.fase === filtro),
-    [filtro, partidos],
-  )
+  // Mismo orden que la lista pública (/partidos): no-finalizados arriba en
+  // orden ASC por kickoff (próximo más cerca primero), finalizados al final
+  // en orden DESC (más reciente jugado primero). El filtro por fase se
+  // aplica antes de la separación así el orden vale dentro de cada tab.
+  const visibles = useMemo(() => {
+    const filtrados =
+      filtro === 'todos' ? partidos : partidos.filter((p) => p.fase === filtro)
+
+    const pendientes: typeof filtrados = []
+    const finalizados: typeof filtrados = []
+    for (const p of filtrados) {
+      if (p.estado === 'finalizado') finalizados.push(p)
+      else pendientes.push(p)
+    }
+
+    pendientes.sort((a, b) =>
+      a.fecha_hora_kickoff.localeCompare(b.fecha_hora_kickoff),
+    )
+    finalizados.sort((a, b) =>
+      b.fecha_hora_kickoff.localeCompare(a.fecha_hora_kickoff),
+    )
+
+    return [...pendientes, ...finalizados]
+  }, [filtro, partidos])
 
   if (partidos.length === 0) {
     return (
