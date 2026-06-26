@@ -574,6 +574,7 @@ export type Database = {
       estado_partido: "programado" | "en_curso" | "finalizado" | "suspendido"
       fase_partido:
         | "grupos"
+        | "dieciseisavos"
         | "octavos"
         | "cuartos"
         | "semis"
@@ -726,6 +727,7 @@ export const Constants = {
       estado_partido: ["programado", "en_curso", "finalizado", "suspendido"],
       fase_partido: [
         "grupos",
+        "dieciseisavos",
         "octavos",
         "cuartos",
         "semis",

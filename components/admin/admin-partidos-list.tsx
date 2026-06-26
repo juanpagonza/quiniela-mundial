@@ -18,6 +18,7 @@ type Filtro = 'todos' | FasePartido
 const TAB_ORDER: Array<{ value: Filtro; label: string }> = [
   { value: 'todos', label: 'Todos' },
   { value: 'grupos', label: 'Grupos' },
+  { value: 'dieciseisavos', label: '16avos' },
   { value: 'octavos', label: 'Octavos' },
   { value: 'cuartos', label: 'Cuartos' },
   { value: 'semis', label: 'Semis' },

@@ -16,6 +16,7 @@ import type { FasePartido } from '@/lib/supabase/types'
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos',
   octavos: 'Octavos',
   cuartos: 'Cuartos',
   semis: 'Semifinales',

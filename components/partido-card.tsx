@@ -7,6 +7,7 @@ import type { PartidoConPrediccion } from '@/lib/queries/partidos'
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos',
   octavos: 'Octavos',
   cuartos: 'Cuartos',
   semis: 'Semifinales',

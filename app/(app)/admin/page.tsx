@@ -17,6 +17,7 @@ import type { LucideIcon } from 'lucide-react'
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos',
   octavos: 'Octavos',
   cuartos: 'Cuartos',
   semis: 'Semifinales',

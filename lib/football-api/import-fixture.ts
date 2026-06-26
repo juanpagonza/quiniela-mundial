@@ -10,6 +10,9 @@ type EstadoPartido = Database['public']['Enums']['estado_partido']
 // Mapping: football-data.org stage → our fase enum.
 const STAGE_TO_FASE: Record<ApiStage, FasePartido> = {
   GROUP_STAGE: 'grupos',
+  // 2026 World Cup added a Round of 32 (LAST_32) before LAST_16 because of
+  // the 48-team format. Spanish name for 1/16 of final = 'dieciseisavos'.
+  LAST_32: 'dieciseisavos',
   LAST_16: 'octavos',
   QUARTER_FINALS: 'cuartos',
   SEMI_FINALS: 'semis',

@@ -18,6 +18,7 @@ import type { PrediccionUsuario } from '@/lib/queries/partido-detalle'
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos',
   octavos: 'Octavos',
   cuartos: 'Cuartos',
   semis: 'Semifinales',

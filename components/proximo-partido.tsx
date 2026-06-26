@@ -8,6 +8,7 @@ import type { ProximoPartido as ProximoPartidoData } from '@/lib/queries/dashboa
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos',
   octavos: 'Octavos',
   cuartos: 'Cuartos',
   semis: 'Semifinales',

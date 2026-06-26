@@ -14,6 +14,7 @@ import type { MiPrediccionEnPerfil, PerfilUsuario } from '@/lib/queries/perfil'
 
 const FASE_ORDER: FasePartido[] = [
   'grupos',
+  'dieciseisavos',
   'octavos',
   'cuartos',
   'semis',
@@ -23,6 +24,7 @@ const FASE_ORDER: FasePartido[] = [
 
 const FASE_LABELS: Record<FasePartido, string> = {
   grupos: 'Grupos',
+  dieciseisavos: 'Dieciseisavos de final',
   octavos: 'Octavos de final',
   cuartos: 'Cuartos de final',
   semis: 'Semifinales',
