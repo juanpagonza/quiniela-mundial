@@ -163,14 +163,20 @@ export async function importarFixtureAction(
     revalidatePath('/admin')
     revalidatePath('/partidos')
     revalidatePath('/')
-    const omitidos =
+    const omitidoTBD =
       result.partidos_omitidos_tbd > 0
-        ? ` (${result.partidos_omitidos_tbd} omitidos por TBD)`
+        ? `${result.partidos_omitidos_tbd} TBD`
         : ''
+    const omitidoFin =
+      result.partidos_omitidos_finalizados > 0
+        ? `${result.partidos_omitidos_finalizados} ya finalizados`
+        : ''
+    const notas = [omitidoTBD, omitidoFin].filter(Boolean).join(', ')
+    const sufijo = notas ? ` (${notas} omitidos)` : ''
     return {
       result: {
         success: true,
-        message: `Importados ${result.equipos_importados} equipos y ${result.partidos_importados} partidos${omitidos}`,
+        message: `Importados ${result.equipos_importados} equipos y ${result.partidos_importados} partidos${sufijo}`,
       },
     }
   } catch (e) {

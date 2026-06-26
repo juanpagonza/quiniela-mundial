@@ -98,6 +98,7 @@ export interface ImportarFixtureResult {
   equipos_importados: number
   partidos_importados: number
   partidos_omitidos_tbd: number
+  partidos_omitidos_finalizados: number
 }
 
 interface EquipoRow {
@@ -172,7 +173,7 @@ export async function importarFixture(
   // (TBD slots) will get imported on a future re-run once football-data.org
   // fills in the playoff winners — the upsert is idempotent.
   let partidos_omitidos_tbd = 0
-  const partidosRows: PartidoRow[] = []
+  const candidatos: PartidoRow[] = []
   for (const m of response.matches) {
     const localId = m.homeTeam.id != null ? equipoIdByApiId.get(m.homeTeam.id) : undefined
     const visitId = m.awayTeam.id != null ? equipoIdByApiId.get(m.awayTeam.id) : undefined
@@ -180,7 +181,7 @@ export async function importarFixture(
       partidos_omitidos_tbd++
       continue
     }
-    partidosRows.push({
+    candidatos.push({
       api_id: m.id,
       equipo_local_id: localId,
       equipo_visitante_id: visitId,
@@ -188,6 +189,44 @@ export async function importarFixture(
       fase: STAGE_TO_FASE[m.stage],
       estado: STATUS_TO_ESTADO[m.status],
     })
+  }
+
+  // Guard: don't blow away an admin-curated `estado` for partidos already
+  // finalizado with non-null scores. The API can lag or temporarily report
+  // a match back as SCHEDULED/IN_PLAY; re-importing should not undo the
+  // admin's "this is done" call. Mirror of the cron's G2 in sync-results.
+  // marcador_*_real isn't in the payload at all, so scores are always safe.
+  const apiIds = candidatos.map((p) => p.api_id)
+  const { data: existentes, error: existentesError } = apiIds.length
+    ? await client
+        .from('partidos')
+        .select('api_id, estado, marcador_local_real, marcador_visitante_real')
+        .in('api_id', apiIds)
+    : { data: [], error: null }
+  if (existentesError) {
+    throw new Error(
+      `Failed to fetch existing partidos state: ${existentesError.message}`,
+    )
+  }
+  const protegidos = new Set<number>()
+  for (const row of existentes ?? []) {
+    if (
+      row.estado === 'finalizado' &&
+      row.marcador_local_real !== null &&
+      row.marcador_visitante_real !== null
+    ) {
+      protegidos.add(row.api_id)
+    }
+  }
+
+  let partidos_omitidos_finalizados = 0
+  const partidosRows: PartidoRow[] = []
+  for (const c of candidatos) {
+    if (protegidos.has(c.api_id)) {
+      partidos_omitidos_finalizados++
+      continue
+    }
+    partidosRows.push(c)
   }
 
   const { error: partidosError } = await client
@@ -202,6 +241,7 @@ export async function importarFixture(
     equipos_importados: equiposRows.length,
     partidos_importados: partidosRows.length,
     partidos_omitidos_tbd,
+    partidos_omitidos_finalizados,
   }
 }
 

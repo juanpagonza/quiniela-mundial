@@ -16,27 +16,53 @@ function mockApi(body: ApiMatchesResponse) {
   )
 }
 
-// Helper: build a minimal Supabase-shaped client that records upsert calls and
-// returns the inserted equipos so the partidos step can read their ids.
-function createMockClient(equiposReturned: Array<{ id: string; api_id: number }>) {
+interface ExistingPartidoRow {
+  api_id: number
+  estado: string
+  marcador_local_real: number | null
+  marcador_visitante_real: number | null
+}
+
+// Helper: build a minimal Supabase-shaped client. The import does:
+//   1. client.from('equipos').upsert(...).select('id, api_id')
+//   2. client.from('partidos').select(...).in('api_id', ids)   ← NEW (guard)
+//   3. client.from('partidos').upsert(...)
+// `existingPartidos` controls what step 2 returns so tests can drive the
+// finalizado-guard branch.
+function createMockClient(
+  equiposReturned: Array<{ id: string; api_id: number }>,
+  existingPartidos: ExistingPartidoRow[] = [],
+) {
   const equiposUpsert = vi.fn().mockReturnValue({
     select: vi
       .fn()
       .mockResolvedValue({ data: equiposReturned, error: null }),
   })
+
+  const partidosIn = vi
+    .fn()
+    .mockResolvedValue({ data: existingPartidos, error: null })
+  const partidosSelect = vi.fn().mockReturnValue({ in: partidosIn })
   const partidosUpsert = vi.fn().mockResolvedValue({ error: null })
 
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === 'equipos') return { upsert: equiposUpsert }
-    if (table === 'partidos') return { upsert: partidosUpsert }
+    if (table === 'partidos')
+      return { upsert: partidosUpsert, select: partidosSelect }
     throw new Error(`unexpected table: ${table}`)
   })
 
-  return { client: { from } as never, equiposUpsert, partidosUpsert, from }
+  return {
+    client: { from } as never,
+    equiposUpsert,
+    partidosUpsert,
+    partidosSelect,
+    partidosIn,
+    from,
+  }
 }
 
-// Sample API payload: two matches between three distinct teams. Includes a finalized
-// match (so we can later assert that scores are NOT touched by import-fixture).
+// Sample API payload: two matches between three distinct teams.
 const sampleResponse: ApiMatchesResponse = {
   count: 2,
   matches: [
@@ -170,7 +196,7 @@ describe('importarFixture', () => {
     }
   })
 
-  it('returns counts', async () => {
+  it('returns counts (no existing finalizados → none omitted)', async () => {
     mockApi(sampleResponse)
     const { client } = createMockClient([
       { id: 'arg', api_id: 10 },
@@ -184,6 +210,7 @@ describe('importarFixture', () => {
       equipos_importados: 3,
       partidos_importados: 2,
       partidos_omitidos_tbd: 0,
+      partidos_omitidos_finalizados: 0,
     })
   })
 
@@ -227,6 +254,7 @@ describe('importarFixture', () => {
       equipos_importados: 2,
       partidos_importados: 1,
       partidos_omitidos_tbd: 1,
+      partidos_omitidos_finalizados: 0,
     })
   })
 
@@ -262,5 +290,102 @@ describe('importarFixture', () => {
 
     await expect(importarFixture(client)).rejects.toThrow(/boom/)
     expect(partidosUpsert).not.toHaveBeenCalled()
+  })
+
+  // ---------------------------------------------------------------------------
+  // Finalizado guard
+  // ---------------------------------------------------------------------------
+
+  it('Guard: skips a partido that the DB already has as finalizado with scores', async () => {
+    mockApi(sampleResponse)
+    const { client, partidosUpsert } = createMockClient(
+      [
+        { id: 'arg', api_id: 10 },
+        { id: 'bra', api_id: 20 },
+        { id: 'ger', api_id: 30 },
+      ],
+      [
+        // Match 1002 is already locked in by admin: don't let import overwrite estado.
+        {
+          api_id: 1002,
+          estado: 'finalizado',
+          marcador_local_real: 3,
+          marcador_visitante_real: 1,
+        },
+        // Match 1001 is still scheduled — fair game for the import.
+        {
+          api_id: 1001,
+          estado: 'programado',
+          marcador_local_real: null,
+          marcador_visitante_real: null,
+        },
+      ],
+    )
+
+    const result = await importarFixture(client)
+
+    expect(partidosUpsert).toHaveBeenCalledOnce()
+    const [rows] = partidosUpsert.mock.calls[0]
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ api_id: 1001 })
+
+    expect(result.partidos_importados).toBe(1)
+    expect(result.partidos_omitidos_finalizados).toBe(1)
+    expect(result.partidos_omitidos_tbd).toBe(0)
+  })
+
+  it('Guard: does NOT skip a finalizado partido whose stored scores are null (recover from bug)', async () => {
+    // Edge case: a previous buggy sync (or hand-edit) left finalizado +
+    // null scores. The guard is only triggered when BOTH scores are set,
+    // so the import can still correct this row.
+    mockApi(sampleResponse)
+    const { client, partidosUpsert } = createMockClient(
+      [
+        { id: 'arg', api_id: 10 },
+        { id: 'bra', api_id: 20 },
+        { id: 'ger', api_id: 30 },
+      ],
+      [
+        {
+          api_id: 1002,
+          estado: 'finalizado',
+          marcador_local_real: null,
+          marcador_visitante_real: null,
+        },
+      ],
+    )
+
+    const result = await importarFixture(client)
+
+    const [rows] = partidosUpsert.mock.calls[0]
+    expect(rows).toHaveLength(2) // BOTH partidos go through; nothing protected.
+    expect(result.partidos_omitidos_finalizados).toBe(0)
+  })
+
+  it('Guard: lets en_curso partidos flow through (only finalizado is protected)', async () => {
+    mockApi(sampleResponse)
+    const { client, partidosUpsert } = createMockClient(
+      [
+        { id: 'arg', api_id: 10 },
+        { id: 'bra', api_id: 20 },
+        { id: 'ger', api_id: 30 },
+      ],
+      [
+        // Even though scores are set, the row is en_curso, so it's not the
+        // admin's "this is final" signal we're protecting.
+        {
+          api_id: 1002,
+          estado: 'en_curso',
+          marcador_local_real: 1,
+          marcador_visitante_real: 0,
+        },
+      ],
+    )
+
+    const result = await importarFixture(client)
+
+    const [rows] = partidosUpsert.mock.calls[0]
+    expect(rows).toHaveLength(2)
+    expect(result.partidos_omitidos_finalizados).toBe(0)
   })
 })
