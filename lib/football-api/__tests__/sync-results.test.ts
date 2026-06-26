@@ -15,14 +15,40 @@ function mockApi(body: ApiMatchesResponse) {
   )
 }
 
-// Mock supabase client for `client.from(...).update(...).eq(...)`. Captures
-// every chain call so tests can assert on payload + filter.
-function createMockClient() {
+interface CurrentPartidoRow {
+  api_id: number
+  estado: string
+  marcador_local_real: number | null
+  marcador_visitante_real: number | null
+}
+
+// Mock supabase client. The sync now does TWO chains:
+//   1. client.from('partidos').select(...).in('api_id', ids) → current state
+//   2. client.from('partidos').update(...).eq('api_id', id)  → write
+// `currentRows` controls what the pre-fetch returns so tests can drive both
+// guards (null-score skip and admin-override skip).
+function createMockClient(opts: { currentRows?: CurrentPartidoRow[] } = {}) {
+  const inMock = vi
+    .fn()
+    .mockResolvedValue({ data: opts.currentRows ?? [], error: null })
+  const selectMock = vi.fn().mockReturnValue({ in: inMock })
+
   const eqMock = vi.fn().mockResolvedValue({ error: null })
   const updateMock = vi.fn().mockReturnValue({ eq: eqMock })
-  const fromMock = vi.fn().mockReturnValue({ update: updateMock })
 
-  return { client: { from: fromMock } as never, fromMock, updateMock, eqMock }
+  const fromMock = vi.fn().mockReturnValue({
+    select: selectMock,
+    update: updateMock,
+  })
+
+  return {
+    client: { from: fromMock } as never,
+    fromMock,
+    selectMock,
+    inMock,
+    updateMock,
+    eqMock,
+  }
 }
 
 const liveMatches: ApiMatchesResponse = {
@@ -82,8 +108,9 @@ describe('sincronizarResultados', () => {
     )
   })
 
-  it('updates each match by api_id with estado + scores', async () => {
+  it('updates each match by api_id with estado + scores when no current rows', async () => {
     mockApi(liveMatches)
+    // No current rows → guards don't trigger.
     const { client, fromMock, updateMock, eqMock } = createMockClient()
 
     await sincronizarResultados(client)
@@ -128,15 +155,133 @@ describe('sincronizarResultados', () => {
 
   it('propagates DB errors and stops processing', async () => {
     mockApi(liveMatches)
+    const inMock = vi.fn().mockResolvedValue({ data: [], error: null })
+    const selectMock = vi.fn().mockReturnValue({ in: inMock })
     const eqMock = vi
       .fn()
       .mockResolvedValueOnce({ error: { message: 'constraint X' } })
       .mockResolvedValueOnce({ error: null })
     const updateMock = vi.fn().mockReturnValue({ eq: eqMock })
-    const client = { from: () => ({ update: updateMock }) } as never
+    const client = {
+      from: () => ({ select: selectMock, update: updateMock }),
+    } as never
 
     await expect(sincronizarResultados(client)).rejects.toThrow(/constraint X/)
     // Only the first match was attempted; the second never ran.
     expect(eqMock).toHaveBeenCalledTimes(1)
+  })
+
+  // ---------------------------------------------------------------------------
+  // Defensive guards
+  // ---------------------------------------------------------------------------
+
+  it('Guard 1: skips a match when API reports null scores', async () => {
+    const body: ApiMatchesResponse = {
+      count: 1,
+      matches: [
+        {
+          id: 3001,
+          utcDate: '2026-06-12T20:00:00Z',
+          status: 'FINISHED',
+          stage: 'GROUP_STAGE',
+          homeTeam: { id: 50, name: 'E', shortName: 'E', tla: 'E', crest: null },
+          awayTeam: { id: 60, name: 'F', shortName: 'F', tla: 'F', crest: null },
+          score: {
+            winner: null,
+            // Lagged data feed: FINISHED status but no scores published yet.
+            fullTime: { home: null, away: null },
+            halfTime: { home: null, away: null },
+          },
+        },
+      ],
+    }
+    mockApi(body)
+    const { client, updateMock } = createMockClient()
+
+    const result = await sincronizarResultados(client)
+
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(result).toEqual({ partidos_actualizados: 0 })
+  })
+
+  it('Guard 1: still writes when only one side of the score is null… NO, both must be non-null', async () => {
+    const body: ApiMatchesResponse = {
+      count: 1,
+      matches: [
+        {
+          id: 3002,
+          utcDate: '2026-06-12T20:00:00Z',
+          status: 'FINISHED',
+          stage: 'GROUP_STAGE',
+          homeTeam: { id: 50, name: 'E', shortName: 'E', tla: 'E', crest: null },
+          awayTeam: { id: 60, name: 'F', shortName: 'F', tla: 'F', crest: null },
+          score: {
+            winner: null,
+            fullTime: { home: 2, away: null },
+            halfTime: { home: 1, away: 0 },
+          },
+        },
+      ],
+    }
+    mockApi(body)
+    const { client, updateMock } = createMockClient()
+
+    const result = await sincronizarResultados(client)
+
+    // Either-null is treated the same as both-null: skip the update.
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(result).toEqual({ partidos_actualizados: 0 })
+  })
+
+  it('Guard 2: skips a match already finalizado in the DB (admin override)', async () => {
+    mockApi(liveMatches)
+    const { client, updateMock, eqMock } = createMockClient({
+      currentRows: [
+        // Admin already locked this in with their own score.
+        {
+          api_id: 2002,
+          estado: 'finalizado',
+          marcador_local_real: 3,
+          marcador_visitante_real: 1,
+        },
+        // The other partido (2001) is still en_curso in the DB,
+        // so the API update IS applied to it.
+        {
+          api_id: 2001,
+          estado: 'programado',
+          marcador_local_real: null,
+          marcador_visitante_real: null,
+        },
+      ],
+    })
+
+    const result = await sincronizarResultados(client)
+
+    // Only partido 2001 got updated; 2002 was skipped because admin set it.
+    expect(updateMock).toHaveBeenCalledTimes(1)
+    expect(eqMock).toHaveBeenCalledWith('api_id', 2001)
+    expect(result).toEqual({ partidos_actualizados: 1 })
+  })
+
+  it('Guard 2: still writes when DB row is finalizado but scores are null', async () => {
+    // Edge case: a previous buggy sync left finalizado + null scores in
+    // the DB. Don't get stuck — let the API correct it this round.
+    mockApi(liveMatches)
+    const { client, updateMock } = createMockClient({
+      currentRows: [
+        {
+          api_id: 2002,
+          estado: 'finalizado',
+          marcador_local_real: null,
+          marcador_visitante_real: null,
+        },
+      ],
+    })
+
+    await sincronizarResultados(client)
+
+    // Both partidos updated: 2001 (no current row) and 2002 (current finalizado
+    // but with null scores, so the override guard doesn't kick in).
+    expect(updateMock).toHaveBeenCalledTimes(2)
   })
 })
